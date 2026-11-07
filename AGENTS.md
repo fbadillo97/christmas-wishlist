@@ -2,7 +2,7 @@
 
 - Keep the app buildless and compatible with GitHub Pages project paths; use relative asset URLs.
 - Use the connected GitHub connector for repository changes. Read the current head before writing and never overwrite concurrent work.
-- Preserve stable people and gift IDs; support future family members and seasons through JSON.
+- Preserve stable people and gift IDs; support future family members and seasons through JSON. Show names without ages; do not add age or birthday fields.
 - Do not fabricate real gifts. Keep examples separate, conspicuously labeled, and outside the backend catalog.
 - Public repo/site: no secrets, private emails, purchaser identities, addresses, birthdays, or child photos. Only Supabase URL and publishable/anon key may be public.
 - Use textContent for gift/user text and HTTPS-only external product/image URLs. Preserve CSP, no-referrer, accessible controls, and mobile layouts.

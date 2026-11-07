@@ -1,1 +1,16 @@
-{"year":2026,"people":[{"id":"livia","name":"Livia","subtitle":"4½ at Christmas","symbol":"🌟"},{"id":"luca","name":"Luca","subtitle":"6 months at Christmas","symbol":"🌙"}],"gifts":[]}
+{
+  "year": 2026,
+  "people": [
+    {
+      "id": "livia",
+      "name": "Livia",
+      "symbol": "🌟"
+    },
+    {
+      "id": "luca",
+      "name": "Luca",
+      "symbol": "🌙"
+    }
+  ],
+  "gifts": []
+}

@@ -10,7 +10,7 @@ GitHub Settings → Pages → Deploy from a branch → `main` → `/ (root)` →
 
 Edit `data/wishlist.json`. Add people using stable IDs; add gifts following `data/examples.json`: stable `id`, `person`, `title`, HTTPS `url`, optional HTTPS `image`, optional `symbol`, `match` (`exact` or `similar`), boolean `used`, and `notes`. Do not copy demo IDs into the real list. Prefer locally hosted licensed product images; remote images disclose visitors' IPs to the image host. Product links open separately with no referrer. Never scrape or invent product information.
 
-Names, age descriptions, ideas, and all repository history are public. Keep full birth dates, addresses, photos of children, emails, shipping details, and purchaser information out of this repository. `noindex` is a request to search engines, not access control. Age descriptions are specific to Christmas 2026; update the year and descriptions for future seasons. Never reuse an old gift ID for a different gift.
+Names, ideas, and all repository history are public. Keep full birth dates, addresses, photos of children, emails, shipping details, and purchaser information out of this repository. `noindex` is a request to search engines, not access control. Update the season year for future Christmas lists. Never reuse an old gift ID for a different gift.
 
 ## Activate shared tracking (one-time owner setup)
 
