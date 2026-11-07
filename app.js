@@ -25,7 +25,7 @@ async function refresh(){
  const version=generation;refreshing=true;statuses=[];render();
  try{
   const nextData=await request('/rest/v1/rpc/get_wishlist',{});
-  const nextStatuses=await request('/rest/v1/rpc/list_gift_statuses',{});
+  const nextStatuses=await request('/rest/v1/rpc/list_gift_units',{});
   if(version!==generation||!session)return;
   data=nextData;statuses=nextStatuses;authorized=true;
   if(person!=='all'&&!data.people.some(p=>p.id===person))person='all';
@@ -33,20 +33,65 @@ async function refresh(){
  }catch(error){if(version===generation){lockWishlist();notice('Unable to open the private wishlists: '+error.message);}}
  finally{refreshing=false;if(version===generation)render();}
 }
-function render(){ $('#logout').hidden=!session;$('#signin').hidden=!!session;$('#account-email').hidden=!session;$('#account-email').textContent=session?.user?.email|| (session?'Account unavailable':'');$('#login').hidden=!!session;$('#wishlist').hidden=!authorized;$('#welcome').hidden=authorized;$('#gifts').replaceChildren();$('#people').replaceChildren();if(!authorized)return;
- for(const p of [{id:'all',name:'Everyone',symbol:'🎁'},...data.people]){const b=node('button',p.symbol+' '+p.name);b.setAttribute('aria-pressed',p.id===person);b.onclick=()=>{person=p.id;render();};$('#people').append(b);}
- $('#filter').disabled=!authorized;const gifts=data.gifts;
+function render(){
+ $('#logout').hidden=!session;$('#signin').hidden=!!session;$('#account-email').hidden=!session;
+ $('#account-email').textContent=session?.user?.email||(session?'Account unavailable':'');$('#login').hidden=!!session;
+ $('#wishlist').hidden=!authorized;$('#welcome').hidden=authorized;$('#gifts').replaceChildren();$('#people').replaceChildren();
+ if(!authorized)return;
+ for(const p of [{id:'all',name:'Everyone',symbol:'🎁'},...data.people]){
+  const button=node('button',p.symbol+' '+p.name);button.setAttribute('aria-pressed',p.id===person);
+  button.onclick=()=>{person=p.id;render();};$('#people').append(button);
+ }
+ $('#filter').disabled=!authorized;
  $('#list-title').textContent=(person==='all'?'Everyone':data.people.find(p=>p.id===person).name)+'’s wishlist';
- const root=$('#gifts');root.replaceChildren();const list=gifts.filter(g=>person==='all'||g.person===person).filter(g=>{const s=statuses.find(s=>s.gift_id===g.id)?.status;return $('#filter').value==='all'||(s||'available')===$('#filter').value;});
- if(!list.length){const e=node('div',null,'empty');e.append(node('div','✧'),node('h3',gifts.length?'No gifts in this view':'Good things are on their way.'),node('p',gifts.length?'Try another person or availability filter.':'We’re gathering gift ideas. Check back soon.'),node('p','No gifts are expected. Your company is the best present.'));root.append(e);return;}
- for(const g of list){const state=statuses.find(s=>s.gift_id===g.id);const card=node('article',null,'card'),art=node('div',null,'art');if(safeURL(g.image)){const img=node('img');img.src=safeURL(g.image);img.alt=g.title;img.loading='lazy';img.referrerPolicy='no-referrer';img.addEventListener('error',()=>art.replaceChildren(node('span',g.symbol||'🎁')));art.append(img);}else art.textContent=g.symbol||'🎁';
- const c=node('div',null,'content');c.append(node('span',data.people.find(p=>p.id===g.person)?.name||'Family','tag'),node('h3',g.title));const pills=node('div',null,'pills');if(g.match==='exact'||g.match==='similar')pills.append(node('span',g.match==='exact'?'Exact item please':'Similar is lovely'));if(typeof g.used==='boolean')pills.append(node('span',g.used?'Gently used welcome':'New please'));c.append(pills,node('p',g.notes));if(safeURL(g.url)){const a=node('a','View gift ↗','product');a.href=safeURL(g.url);a.target='_blank';a.rel='noopener noreferrer';c.append(a);}
- c.append(node('b',!state?'Availability unavailable':state.status));
- const actions=node('div',null,'actions');const enabled=authorized&&session&&!refreshing&&Boolean(state);for(const [label,value] of ((!state?.status||state.status==='available')?[['Reserve','reserved'],['Purchased','purchased']]:state.mine?[...(state.status==='reserved'?[['Mark purchased','purchased']]:[]),['Undo my selection','available']]:[])){const b=node('button',label);b.disabled=busy||!enabled;b.addEventListener('click',()=>change(g.id,value));actions.append(b);}c.append(actions);card.append(art,c);root.append(card);}}
-async function change(id,status){
+ const filter=$('#filter').value;
+ const gifts=data.gifts.filter(g=>person==='all'||g.person===person).filter(g=>filter==='all'||statuses.some(s=>s.gift_id===g.id&&s.status===filter));
+ if(!gifts.length){
+  const empty=node('div',null,'empty');
+  empty.append(node('div','✧'),node('h3',data.gifts.length?'No gifts in this view':'Good things are on their way.'),node('p',data.gifts.length?'Try another person or availability filter.':'We’re gathering gift ideas. Check back soon.'),node('p','No gifts are expected. Your company is the best present.'));
+  $('#gifts').append(empty);return;
+ }
+ for(const g of gifts){
+  const quantity=g.quantity||1,units=statuses.filter(s=>s.gift_id===g.id);
+  const card=node('article',null,'card'),art=node('div',null,'art');
+  if(safeURL(g.image)){
+   const img=node('img');img.src=safeURL(g.image);img.alt=g.title;img.loading='lazy';img.referrerPolicy='no-referrer';
+   img.addEventListener('error',()=>art.replaceChildren(node('span',g.symbol||'🎁')));art.append(img);
+  }else art.textContent=g.symbol||'🎁';
+  const content=node('div',null,'content');
+  content.append(node('span',data.people.find(p=>p.id===g.person)?.name||'Family','tag'),node('h3',g.title));
+  const pills=node('div',null,'pills');
+  pills.append(node('span',g.kind==='idea'?'General idea':'Specific product'));
+  if(g.match==='exact'||g.match==='similar')pills.append(node('span',g.match==='exact'?'Exact item please':'Similar is lovely'));
+  if(typeof g.used==='boolean')pills.append(node('span',g.used?'Gently used welcome':'New please'));
+  content.append(pills);
+  if(g.notes){content.append(node('b','Notes','notes-label'),node('p',g.notes,'gift-notes'));}
+  if(safeURL(g.url)){
+   const link=node('a','View gift ↗','product');link.href=safeURL(g.url);link.target='_blank';link.rel='noopener noreferrer';content.append(link);
+  }
+  const counts={available:0,reserved:0,purchased:0};units.forEach(u=>{if(u.status in counts)counts[u.status]++;});
+  content.append(node('p',units.length===quantity?quantity+' wanted · '+counts.available+' available'+(counts.reserved?' · '+counts.reserved+' reserved':'')+(counts.purchased?' · '+counts.purchased+' purchased':''):quantity+' wanted · Checking availability…','quantity-summary'));
+  const selections=node('div',null,'unit-list');
+  for(let number=1;number<=quantity;number++){
+   const state=units.find(u=>u.unit_no===number),row=node('div',null,'unit-row');
+   const status=state?(state.status[0].toUpperCase()+state.status.slice(1))+(state.mine?' by you':''):'Availability unavailable';
+   row.append(node('b',(quantity>1?'Item '+number+' · ':'')+status));
+   const actions=node('div',null,'actions');
+   const choices=!state||state.status==='available'?[['Reserve','reserved'],['Mark purchased','purchased']]:state.mine?[...(state.status==='reserved'?[['Mark purchased','purchased']]:[]),['Undo my selection','available']]:[];
+   for(const [label,value] of choices){
+    const button=node('button',label);button.disabled=busy||refreshing||!state||!session;
+    button.setAttribute('aria-label',label+' · '+g.title+(quantity>1?' · item '+number:''));
+    button.addEventListener('click',()=>change(g.id,number,value));actions.append(button);
+   }
+   row.append(actions);selections.append(row);
+  }
+  content.append(selections);card.append(art,content);$('#gifts').append(card);
+ }
+}
+async function change(id,unitNo,status){
  if(!authorized||busy||refreshing)return;
  const version=generation;busy=true;render();
- try{await request('/rest/v1/rpc/set_gift_status',{p_gift_id:id,p_status:status});if(version===generation)await refresh();}
+ try{await request('/rest/v1/rpc/set_gift_unit_status',{p_gift_id:id,p_unit_no:unitNo,p_status:status});if(version===generation)await refresh();}
  catch(error){if(version===generation){await refresh();notice('Selection not saved: '+error.message);}}
  finally{busy=false;if(version===generation)render();}
 }

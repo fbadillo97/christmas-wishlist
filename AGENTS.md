@@ -12,4 +12,7 @@
 - Check JavaScript syntax, JSON shape, relative file references, signed-out/approved/unapproved modes, and narrow/wide keyboard-accessible layouts when tools permit. Backend changes require the two-account race, ownership, unauthenticated, and unlisted-account checks in README against a configured test project.
 - Do not delete repositories, erase gift history, or publish private information. No paid services without authorization.
 
-- Default new gift preferences to `match: "exact"` (Exact item please) and `used: true` (Gently used welcome), unless the user specifies otherwise. Gently used means complete, in good condition, and appropriate to buy used; do not infer product safety or suitability without evidence.
+- Default new specific products (`kind: product`) to `match: "exact"`; general ideas (`kind: idea`) to `match: "similar"`. Both default to `used: true` (Gently used welcome) and quantity 1, unless the user specifies otherwise. Gently used means complete, in good condition, and appropriate to buy used; do not infer product safety or suitability without evidence.
+
+- Use a single general `notes` field for item-specific information; no clothing-specific fields. Product URLs are optional. Preserve `(gift_id, unit_no)` claims when editing; never reduce requested quantity by silently releasing selections.
+- For gift-entry maintenance, use `.agents/skills/manage-family-wishlist/SKILL.md`.

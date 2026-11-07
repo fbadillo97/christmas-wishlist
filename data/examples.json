@@ -1,1 +1,24 @@
-[{"id":"demo-art","person":"livia","title":"An example creative gift","url":"https://example.com/creative-gift","image":"","symbol":"🎨","match":"similar","used":true,"notes":"DEMO ONLY — shows where colour, size, or other preferences will appear."},{"id":"demo-book","person":"luca","title":"An example first book","url":"https://example.com/first-book","image":"","symbol":"📚","match":"exact","used":false,"notes":"DEMO ONLY — no real product has been selected."}]
+[
+  {
+    "id": "example-product",
+    "person": "example-person",
+    "kind": "product",
+    "quantity": 1,
+    "title": "Example specific product",
+    "url": "https://example.com/product",
+    "match": "exact",
+    "used": true,
+    "notes": "Fabricated schema example only."
+  },
+  {
+    "id": "example-idea",
+    "person": "example-person",
+    "kind": "idea",
+    "quantity": 3,
+    "title": "Example general idea",
+    "url": "",
+    "match": "similar",
+    "used": true,
+    "notes": "Put size, colour or any unique information here. Fabricated example only."
+  }
+]
