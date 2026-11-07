@@ -4,6 +4,7 @@ const node = (tag, text, cls) => { const n=document.createElement(tag); if(text)
 const safeURL = value => {try{const u=new URL(value);return u.protocol==='https:'?u.href:null;}catch{return null;}};
 let data={people:[],gifts:[]},config,person='all',busy=false,statuses=[],session=null,authorized=false,generation=0,refreshing=false,tokenRefreshPromise=null;
 let view='all',mySelections={gifts:[],units:[]};const actionMessages=new Map();
+let familyPhotoURL=null,photoLoading=false,photoVersion=0,photoRetryAt=0;
 
 try{session=JSON.parse(localStorage.getItem('badillo-session'));}catch{}
 const connected=()=>Boolean(config?.supabaseUrl&&config?.publishableKey);
@@ -20,7 +21,28 @@ async function request(path,body,authenticated=true,method='POST'){
 }
 function notice(text){$('#connection').textContent=text;}
 function confirmAction(text,isError=false){const toast=$('#action-toast');toast.hidden=false;toast.classList.toggle('error',isError);$('#action-toast-text').textContent=text;}
-function lockWishlist(cancelPasskeys=true){if(cancelPasskeys)window.wishlistPasskeys?.clear();window.wishlistEditor?.clear();authorized=false;data={people:[],gifts:[]};statuses=[];person='all';view='all';mySelections={gifts:[],units:[]};actionMessages.clear();$('#action-toast').hidden=true;$('#action-toast-text').textContent='';}
+function lockWishlist(cancelPasskeys=true){clearFamilyPhoto();if(cancelPasskeys)window.wishlistPasskeys?.clear();window.wishlistEditor?.clear();authorized=false;data={people:[],gifts:[]};statuses=[];person='all';view='all';mySelections={gifts:[],units:[]};actionMessages.clear();$('#action-toast').hidden=true;$('#action-toast-text').textContent='';}
+
+function clearFamilyPhoto(){
+ photoVersion++;photoLoading=false;photoRetryAt=0;
+ if(familyPhotoURL)URL.revokeObjectURL(familyPhotoURL);
+ familyPhotoURL=null;$('#family-photo').removeAttribute('src');$('#family-photo-section').hidden=true;
+}
+async function loadFamilyPhoto(){
+ if(!authorized||!session||familyPhotoURL||photoLoading||Date.now()<photoRetryAt)return;
+ const version=generation,operation=++photoVersion;photoLoading=true;
+ try{
+  const photo=await request('/rest/v1/rpc/get_family_photo',{});
+  if(operation!==photoVersion||version!==generation||!authorized||!session)return;
+  if(!photo){photoRetryAt=Date.now()+60000;return;}
+  if(photo.content_type!=='image/jpeg'||typeof photo.base64!=='string'||photo.base64.length>350000)throw Error('Invalid family photo');
+  const bytes=Uint8Array.from(atob(photo.base64),c=>c.charCodeAt(0));
+  familyPhotoURL=URL.createObjectURL(new Blob([bytes],{type:'image/jpeg'}));
+  $('#family-photo').src=familyPhotoURL;$('#family-photo-section').hidden=false;
+ }catch{if(operation===photoVersion)photoRetryAt=Date.now()+60000;}
+ finally{if(operation===photoVersion)photoLoading=false;}
+}
+
 async function refresh(){
  if(refreshing)return;
  if(!connected()||!session){lockWishlist();notice('Sign in to view our family wishlists. Access is limited to approved family email addresses.');render();return;}
@@ -30,7 +52,7 @@ async function refresh(){
   const nextStatuses=await request('/rest/v1/rpc/list_gift_units',{});
   const nextSelections=await request('/rest/v1/rpc/get_my_selections',{});
   if(version!==generation||!session)return;
-  data=nextData;statuses=nextStatuses;mySelections=nextSelections;authorized=true;
+  data=nextData;statuses=nextStatuses;mySelections=nextSelections;authorized=true;loadFamilyPhoto();
   if(person!=='all'&&!data.people.some(p=>p.id===person))person='all';
   notice('Family wishlists · Reserve a gift before shopping to avoid duplicates.');
  }catch(error){if(version===generation){lockWishlist();notice('Unable to open the private wishlists: '+error.message);}}
@@ -129,7 +151,7 @@ async function signOut(){
 async function start(){try{
  window.wishlistPasskeys?.init({request,acceptSession:acceptPasskeySession,notify:confirmAction,ready:connected,getGeneration:()=>generation});
  window.wishlistEditor?.init({request,refresh,notify:confirmAction,safeURL,getData:()=>data,getPerson:()=>person,getGeneration:()=>generation});
- $('#logout').onclick=signOut;$('#dismiss-toast').onclick=()=>{$('#action-toast').hidden=true;};for(const name of ['all','mine'])$('#view-'+name).onclick=()=>{view=name;$('#filter').value='all';render();};render();
+ $('#family-photo').onerror=()=>{clearFamilyPhoto();photoRetryAt=Date.now()+60000;};$('#logout').onclick=signOut;$('#dismiss-toast').onclick=()=>{$('#action-toast').hidden=true;};for(const name of ['all','mine'])$('#view-'+name).onclick=()=>{view=name;$('#filter').value='all';render();};render();
  const result=await fetch('config.json',{cache:'no-store'});if(!result.ok)throw Error('Unable to load connection settings');config=await result.json();
  if(config.supabaseUrl&&!/^https:\/\/[a-z0-9-]+\.supabase\.co$/.test(config.supabaseUrl))throw Error('Invalid backend URL');
  const hash=new URLSearchParams(location.hash.slice(1));if(hash.has('access_token')){saveSession({access_token:hash.get('access_token'),refresh_token:hash.get('refresh_token'),expires_at:Date.now()/1000+Number(hash.get('expires_in')||3600)});history.replaceState(null,'',location.pathname+location.search);}else if(hash.has('error_description')){authFeedback('Sign-in link failed: '+hash.get('error_description'));history.replaceState(null,'',location.pathname);}
