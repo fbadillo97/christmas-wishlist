@@ -22,3 +22,5 @@
 
 - Passkeys use Supabase Auth + native WebAuthn. Keep email-link fallback. Never store credentials/biometrics/PINs or log signed responses/session tokens. Both email and passkey sessions must pass Auth /user and the same private family authorization.
 - Passkey setup/removal applies only to the signed-in user's account; abort ceremonies and ignore delayed responses on sign-out. Never automate device authentication prompts. Changing the RP ID/domain requires re-enrollment.
+
+- My selections must return only the authenticated member’s claims, including archived gifts for undo. Keep purchaser IDs private; archived gifts cannot receive new selections. Clear action feedback on sign-out and preserve confirmations across routine refreshes.

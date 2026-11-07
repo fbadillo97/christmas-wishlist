@@ -3,6 +3,7 @@ const authFeedback=(text,isError=true)=>window.wishlistAuthFeedback?.(text,isErr
 const node = (tag, text, cls) => { const n=document.createElement(tag); if(text)n.textContent=text;if(cls)n.className=cls;return n; };
 const safeURL = value => {try{const u=new URL(value);return u.protocol==='https:'?u.href:null;}catch{return null;}};
 let data={people:[],gifts:[]},config,person='all',busy=false,statuses=[],session=null,authorized=false,generation=0,refreshing=false,tokenRefreshPromise=null;
+let view='all',mySelections={gifts:[],units:[]};const actionMessages=new Map();
 
 try{session=JSON.parse(localStorage.getItem('badillo-session'));}catch{}
 const connected=()=>Boolean(config?.supabaseUrl&&config?.publishableKey);
@@ -18,7 +19,8 @@ async function request(path,body,authenticated=true,method='POST'){
  const result=await response.json().catch(()=>null);if(!response.ok)throw Error((result?.message||result?.msg||result?.error_description||'The request was rejected.')+' (HTTP '+response.status+(result?.error_code?', '+result.error_code:'')+')');return result;
 }
 function notice(text){$('#connection').textContent=text;}
-function lockWishlist(cancelPasskeys=true){if(cancelPasskeys)window.wishlistPasskeys?.clear();window.wishlistEditor?.clear();authorized=false;data={people:[],gifts:[]};statuses=[];person='all';}
+function confirmAction(text,isError=false){const toast=$('#action-toast');toast.hidden=false;toast.classList.toggle('error',isError);$('#action-toast-text').textContent=text;}
+function lockWishlist(cancelPasskeys=true){if(cancelPasskeys)window.wishlistPasskeys?.clear();window.wishlistEditor?.clear();authorized=false;data={people:[],gifts:[]};statuses=[];person='all';view='all';mySelections={gifts:[],units:[]};actionMessages.clear();$('#action-toast').hidden=true;$('#action-toast-text').textContent='';}
 async function refresh(){
  if(refreshing)return;
  if(!connected()||!session){lockWishlist();notice('Sign in to view our family wishlists. Access is limited to approved family email addresses.');render();return;}
@@ -26,8 +28,9 @@ async function refresh(){
  try{
   const nextData=await request('/rest/v1/rpc/get_wishlist',{});
   const nextStatuses=await request('/rest/v1/rpc/list_gift_units',{});
+  const nextSelections=await request('/rest/v1/rpc/get_my_selections',{});
   if(version!==generation||!session)return;
-  data=nextData;statuses=nextStatuses;authorized=true;
+  data=nextData;statuses=nextStatuses;mySelections=nextSelections;authorized=true;
   if(person!=='all'&&!data.people.some(p=>p.id===person))person='all';
   notice('Family wishlists · Reserve a gift before shopping to avoid duplicates.');
  }catch(error){if(version===generation){lockWishlist();notice('Unable to open the private wishlists: '+error.message);}}
@@ -45,16 +48,18 @@ function render(){
   button.onclick=()=>{person=p.id;render();};$('#people').append(button);
  }
  $('#filter').disabled=!authorized;
- $('#list-title').textContent=(person==='all'?'Everyone':data.people.find(p=>p.id===person).name)+'’s wishlist';
+ $('#view-all').setAttribute('aria-pressed',view==='all');$('#view-mine').setAttribute('aria-pressed',view==='mine');$('#view-mine').textContent='My selections ('+mySelections.units.length+')';
+ $('#list-title').textContent=view==='mine'?'My selections':(person==='all'?'Everyone':data.people.find(p=>p.id===person).name)+'’s wishlist';
  const filter=$('#filter').value;
- const gifts=data.gifts.filter(g=>person==='all'||g.person===person).filter(g=>filter==='all'||statuses.some(s=>s.gift_id===g.id&&s.status===filter));
+ const source=view==='mine'?mySelections.gifts:data.gifts,viewUnits=view==='mine'?mySelections.units:statuses;
+ const gifts=source.filter(g=>person==='all'||g.person===person).filter(g=>filter==='all'||viewUnits.some(s=>s.gift_id===g.id&&s.status===filter));
  if(!gifts.length){
   const empty=node('div',null,'empty');
-  empty.append(node('div','✧'),node('h3',data.gifts.length?'No gifts in this view':'Good things are on their way.'),node('p',data.gifts.length?'Try another person or availability filter.':'We’re gathering gift ideas. Check back soon.'),node('p','No gifts are expected. Your company is the best present.'));
+  empty.append(node('div','✧'),node('h3',view==='mine'?'No selections in this view':data.gifts.length?'No gifts in this view':'Good things are on their way.'),node('p',view==='mine'?'Your reserved and purchased gifts appear here. Try Everyone’s wishlist to choose a gift, or change the filters.':data.gifts.length?'Try another person or availability filter.':'We’re gathering gift ideas. Check back soon.'),node('p','No gifts are expected. Your company is the best present.'));
   $('#gifts').append(empty);return;
  }
  for(const g of gifts){
-  const quantity=g.quantity||1,units=statuses.filter(s=>s.gift_id===g.id);
+  const quantity=g.quantity||1,units=viewUnits.filter(s=>s.gift_id===g.id);
   const card=node('article',null,'card'),art=node('div',null,'art');
   if(safeURL(g.image)){
    const img=node('img');img.src=safeURL(g.image);img.alt=g.title;img.loading='lazy';img.referrerPolicy='no-referrer';
@@ -66,35 +71,39 @@ function render(){
   pills.append(node('span',g.kind==='idea'?'General idea':'Specific product'));
   if(g.match==='exact'||g.match==='similar')pills.append(node('span',g.match==='exact'?'Exact item please':'Similar is lovely'));
   if(typeof g.used==='boolean')pills.append(node('span',g.used?'Gently used welcome':'New please'));
-  content.append(pills);
+  if(g.archived)pills.append(node('span','Archived · undo available'));content.append(pills);
   if(g.notes){content.append(node('b','Notes','notes-label'),node('p',g.notes,'gift-notes'));}
   if(safeURL(g.url)){
    const link=node('a','View gift ↗','product');link.href=safeURL(g.url);link.target='_blank';link.rel='noopener noreferrer';content.append(link);
   }
   const counts={available:0,reserved:0,purchased:0};units.forEach(u=>{if(u.status in counts)counts[u.status]++;});
-  content.append(node('p',units.length===quantity?quantity+' wanted · '+counts.available+' available'+(counts.reserved?' · '+counts.reserved+' reserved':'')+(counts.purchased?' · '+counts.purchased+' purchased':''):quantity+' wanted · Checking availability…','quantity-summary'));
+  content.append(node('p',view==='mine'?units.length+' selected by you · '+counts.reserved+' reserved · '+counts.purchased+' purchased':units.length===quantity?quantity+' wanted · '+counts.available+' available'+(counts.reserved?' · '+counts.reserved+' reserved':'')+(counts.purchased?' · '+counts.purchased+' purchased':''):quantity+' wanted · Checking availability…','quantity-summary'));
   const selections=node('div',null,'unit-list');
   for(let number=1;number<=quantity;number++){
-   const state=units.find(u=>u.unit_no===number),row=node('div',null,'unit-row');
+   const state=units.find(u=>u.unit_no===number);if(view==='mine'&&!state)continue;const row=node('div',null,'unit-row');
    const status=state?(state.status[0].toUpperCase()+state.status.slice(1))+(state.mine?' by you':''):'Availability unavailable';
    row.append(node('b',(quantity>1?'Item '+number+' · ':'')+status));
    const actions=node('div',null,'actions');
-   const choices=!state||state.status==='available'?[['Reserve','reserved'],['Mark purchased','purchased']]:state.mine?[...(state.status==='reserved'?[['Mark purchased','purchased']]:[]),['Undo my selection','available']]:[];
+   const choices=!state||state.status==='available'?[['Reserve','reserved'],['Mark purchased','purchased']]:state.mine?[...(state.status==='reserved'&&!g.archived?[['Mark purchased','purchased']]:[]),['Undo my selection','available']]:[];
    for(const [label,value] of choices){
     const button=node('button',label);button.disabled=busy||refreshing||!state||!session;
     button.setAttribute('aria-label',label+' · '+g.title+(quantity>1?' · item '+number:''));
     button.addEventListener('click',()=>change(g.id,number,value));actions.append(button);
    }
-   row.append(actions);selections.append(row);
+   row.append(actions);const feedback=actionMessages.get(g.id+':'+number);if(feedback){const message=node('p',feedback.text,'action-feedback'+(feedback.error?' error':''));message.setAttribute('role','status');row.append(message);}selections.append(row);
   }
-  content.append(selections);if(['editor','owner'].includes(data.account?.role)){const edit=node('button','Edit gift','edit-gift');edit.type='button';edit.onclick=()=>window.wishlistEditor.openGift(g.id);content.append(edit);}card.append(art,content);$('#gifts').append(card);
+  content.append(selections);if(!g.archived&&['editor','owner'].includes(data.account?.role)){const edit=node('button','Edit gift','edit-gift');edit.type='button';edit.onclick=()=>window.wishlistEditor.openGift(g.id);content.append(edit);}card.append(art,content);$('#gifts').append(card);
  }
 }
 async function change(id,unitNo,status){
  if(!authorized||busy||refreshing)return;
- const version=generation;busy=true;render();
- try{await request('/rest/v1/rpc/set_gift_unit_status',{p_gift_id:id,p_unit_no:unitNo,p_status:status});if(version===generation)await refresh();}
- catch(error){if(version===generation){await refresh();notice('Selection not saved: '+error.message);}}
+ const version=generation,key=id+':'+unitNo;busy=true;actionMessages.set(key,{text:'Saving…'});render();
+ try{
+  await request('/rest/v1/rpc/set_gift_unit_status',{p_gift_id:id,p_unit_no:unitNo,p_status:status});
+  if(version!==generation)return;
+  await refresh();
+  if(version===generation&&authorized){const text=status==='reserved'?'Reserved for you.':status==='purchased'?'Marked as purchased.':'Your selection was undone.';actionMessages.set(key,{text});confirmAction(text);}
+ }catch(error){if(version===generation){await refresh();if(authorized){const text='Selection not saved: '+error.message;actionMessages.set(key,{text,error:true});confirmAction(text,true);}}}
  finally{busy=false;if(version===generation)render();}
 }
 async function acceptPasskeySession(result){
@@ -118,9 +127,9 @@ async function signOut(){
  if(token&&connected()){try{await fetch(config.supabaseUrl+'/auth/v1/logout',{method:'POST',headers:{apikey:config.publishableKey,Authorization:'Bearer '+token}});}catch{authFeedback('Signed out on this device. The server could not be reached to revoke the session.');}}
 }
 async function start(){try{
- window.wishlistPasskeys?.init({request,acceptSession:acceptPasskeySession,notify:notice,ready:connected,getGeneration:()=>generation});
- window.wishlistEditor?.init({request,refresh,notify:notice,safeURL,getData:()=>data,getPerson:()=>person,getGeneration:()=>generation});
- $('#logout').onclick=signOut;render();
+ window.wishlistPasskeys?.init({request,acceptSession:acceptPasskeySession,notify:confirmAction,ready:connected,getGeneration:()=>generation});
+ window.wishlistEditor?.init({request,refresh,notify:confirmAction,safeURL,getData:()=>data,getPerson:()=>person,getGeneration:()=>generation});
+ $('#logout').onclick=signOut;$('#dismiss-toast').onclick=()=>{$('#action-toast').hidden=true;};for(const name of ['all','mine'])$('#view-'+name).onclick=()=>{view=name;$('#filter').value='all';render();};render();
  const result=await fetch('config.json',{cache:'no-store'});if(!result.ok)throw Error('Unable to load connection settings');config=await result.json();
  if(config.supabaseUrl&&!/^https:\/\/[a-z0-9-]+\.supabase\.co$/.test(config.supabaseUrl))throw Error('Invalid backend URL');
  const hash=new URLSearchParams(location.hash.slice(1));if(hash.has('access_token')){saveSession({access_token:hash.get('access_token'),refresh_token:hash.get('refresh_token'),expires_at:Date.now()/1000+Number(hash.get('expires_in')||3600)});history.replaceState(null,'',location.pathname+location.search);}else if(hash.has('error_description')){authFeedback('Sign-in link failed: '+hash.get('error_description'));history.replaceState(null,'',location.pathname);}

@@ -17,3 +17,5 @@
 .quantity-field{display:grid;gap:4px;align-content:start}.quantity-stepper{display:flex;gap:6px;align-items:center}.editor-dialog .quantity-stepper button{width:42px;flex-shrink:0;padding:10px}.quantity-stepper input{text-align:center}
 
 .passkey-choice{margin:22px 0}.passkey-choice>button{width:100%}.passkey-choice p{font-size:13px;line-height:1.5}.signin-divider{text-align:center;color:var(--muted);margin:22px 0 12px}#passkey-message{font-size:14px;overflow-wrap:anywhere}#passkey-signin-message:empty{display:none}
+
+.view-tabs{display:flex;gap:.6rem;flex-wrap:wrap;margin:1rem 0}.action-feedback{margin:.5rem 0 0;color:#246343;font-size:.9rem}.error{color:#9b2424}.action-toast{position:fixed;bottom:1rem;right:1rem;left:auto;max-width:min(32rem,calc(100vw - 2rem));z-index:50;padding:1rem;background:#fffdf8;border:2px solid #246343;border-radius:12px;box-shadow:0 6px 24px #0003;display:flex;align-items:center;gap:1rem}.action-toast[hidden]{display:none}.action-toast.error{border-color:#9b2424}.action-toast button{flex-shrink:0}.passkey-help{font-size:.9rem;margin:1rem 0}

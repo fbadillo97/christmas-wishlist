@@ -71,3 +71,11 @@ No private key, biometric, device PIN or passkey secret is handled by the app. O
 Passkey endpoints were checked against [Supabase passkey documentation](https://supabase.com/docs/guides/auth/passkeys) and [the current Auth implementation](https://github.com/supabase/supabase-js/blob/master/packages/core/auth-js/src/GoTrueClient.ts). Supabase currently labels the feature experimental. There is no new third-party runtime dependency.
 
 Verification passed with synthetic browser/auth responses: base64url conversion, credential serialization, session-required registration, passkey authentication/session acceptance, device cancellation, unsupported browsers, stale operations after sign-out, server-user verification, incomplete-session rejection and unapproved-family denial. Actual device enrollment and sign-in require the user's native browser/device prompt; these have not yet been confirmed on the live site.
+
+### My selections and confirmations
+
+Apply `backend/my-selections.sql` after the existing backend migrations. The authenticated RPC checks verified active membership and returns only the caller's claims, including archived gifts so they can undo old selections. It never returns purchaser identities. My selections supports recipient/status filters; archived selections allow undo only. Selection actions show inline progress/results and a dismissible confirmation; editor and passkey confirmations remain visible through periodic refresh. Feedback and selection data clear on sign-out or lost authorization.
+
+Mobile passkey providers are selected by the device/browser. A passkey must exist in the chosen manager and sync to the phone; email-link fallback remains available. Keeper's Android setup: https://docs.keeper.io/user-guides/autofill-setup-for-android
+
+Verification for My selections passed in rolled-back synthetic fixtures: two-account isolation, no owner-ID disclosure, archived selections and owner undo, another owner’s undo rejection, unlisted-account rejection, and anonymous EXECUTE denial. Existing mutation/atomic claim functions are unchanged. Simulated DOM checks cover own units only, archived undo-only actions, confirmation display and privacy cleanup. JavaScript syntax passed. Physical phone/provider behavior and visual browser layout remain user-device checks.
