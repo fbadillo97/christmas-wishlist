@@ -11,3 +11,5 @@
 - Explain setup and verification accurately. Do not claim shared tracking or deployment is live without checking it.
 - Check JavaScript syntax, JSON shape, relative file references, signed-out/approved/unapproved modes, and narrow/wide keyboard-accessible layouts when tools permit. Backend changes require the two-account race, ownership, unauthenticated, and unlisted-account checks in README against a configured test project.
 - Do not delete repositories, erase gift history, or publish private information. No paid services without authorization.
+
+- Default new gift preferences to `match: "exact"` (Exact item please) and `used: true` (Gently used welcome), unless the user specifies otherwise. Gently used means complete, in good condition, and appropriate to buy used; do not infer product safety or suitability without evidence.
