@@ -12,5 +12,17 @@
       "symbol": "🌙"
     }
   ],
-  "gifts": []
+  "gifts": [
+    {
+      "id": "2026-livia-black-adventure-trailer",
+      "person": "livia",
+      "title": "Peg Perego Black Adventure Trailer",
+      "url": "https://www.pegperego.com/en_ca/toys/black-adventure-trailer-pcode-000000000414.html",
+      "image": "https://usold.pegperego.com/uploads/product_images/38334/adventure_trailer_3-4.png",
+      "symbol": "🎁",
+      "match": null,
+      "used": null,
+      "notes": ""
+    }
+  ]
 }

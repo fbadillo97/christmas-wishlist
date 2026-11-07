@@ -1,6 +1,6 @@
 # Badillo Family Christmas Wishlist
 
-A mobile-friendly, buildless website for GitHub Pages. Real gift lists start empty; **Explore demo gifts** displays clearly labeled examples with tab-only pretend selections. No real gifts have been invented. No shared tracking is active until a backend is configured and tested.
+A mobile-friendly, buildless website for GitHub Pages. Real gift ideas are maintained in `data/wishlist.json`; **Explore demo gifts** displays clearly labeled examples with tab-only pretend selections. Real entries come from the family; demo entries stay separate. No shared tracking is active until a backend is configured and tested.
 
 ## Publish
 
@@ -8,7 +8,7 @@ GitHub Settings → Pages → Deploy from a branch → `main` → `/ (root)` →
 
 ## Add gift ideas
 
-Edit `data/wishlist.json`. Add people using stable IDs; add gifts following `data/examples.json`: stable `id`, `person`, `title`, HTTPS `url`, optional HTTPS `image`, optional `symbol`, `match` (`exact` or `similar`), boolean `used`, and `notes`. Do not copy demo IDs into the real list. Prefer locally hosted licensed product images; remote images disclose visitors' IPs to the image host. Product links open separately with no referrer. Never scrape or invent product information.
+Edit `data/wishlist.json`. Add people using stable IDs; add gifts following `data/examples.json`: stable `id`, `person`, `title`, HTTPS `url`, optional HTTPS `image`, optional `symbol`, `match` (`exact`, `similar`, or `null` when unspecified), `used` (`true`, `false`, or `null` when unspecified), and `notes`. Do not copy demo IDs into the real list. Prefer locally hosted licensed product images; remote images disclose visitors' IPs to the image host. Product links open separately with no referrer. Never scrape or invent product information.
 
 Names, ideas, and all repository history are public. Keep full birth dates, addresses, photos of children, emails, shipping details, and purchaser information out of this repository. `noindex` is a request to search engines, not access control. Update the season year for future Christmas lists. Never reuse an old gift ID for a different gift.
 
