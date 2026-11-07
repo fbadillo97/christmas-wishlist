@@ -16,3 +16,6 @@
 
 - Use a single general `notes` field for item-specific information; no clothing-specific fields. Product URLs are optional. Preserve `(gift_id, unit_no)` claims when editing; never reduce requested quantity by silently releasing selections.
 - For gift-entry maintenance, use `.agents/skills/manage-family-wishlist/SKILL.md`.
+
+- Web roles come only from private family_members.role/active and verified Auth identity, never client email or user_metadata. Both editors manage viewers; only the owner manages editors. Owner removal/demotion is blocked. Keep real role assignments out of Git.
+- Gift edits and archives require revision checks. Archive instead of deleting, preserve claims, and do not silently move a selected gift to another recipient. Clear private editor forms and member lists on sign-out or lost authorization; ignore stale editor responses.

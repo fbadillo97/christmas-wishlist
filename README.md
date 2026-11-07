@@ -41,3 +41,19 @@ Security advisor review: informational [RLS enabled without policies](https://su
 [Manage Family Wishlist](.agents/skills/manage-family-wishlist/SKILL.md) is a repository-scoped skill for turning chat requests into private entries. It applies defaults, preserves IDs/claims, asks only for essential missing information, and verifies changes. It does not grant permission to send invitations, buy gifts, or change family access. It is discoverable in checkouts of this repository; a copy must be installed separately for availability in unrelated chats/workspaces.
 
 Quantity upgrade verification passed: idea defaults, remaining-unit counts, per-unit reserve/purchase/undo, other-owner rejection, unit bounds, safe quantity reduction, anonymous/unapproved denial, and an actual two-connection race with exactly one successful claim. Temporary race fixtures were removed and rollback fixtures did not persist. Simulated frontend checks covered notes, link-free ideas, filters, per-unit controls, and sign-out privacy. Production browser layout remains unverified.
+
+## Web editors and Family access
+
+Approved editors see an Editor badge, Add gift/Edit gift buttons, Archived gifts, and Family access after signing in. Existing email-link sign-in is unchanged. Roles and their seeds live privately in Supabase; real email addresses must never be added to repository files.
+
+Gift forms use dropdowns for recipient, entry type, matching preference and condition. Product/image links are optional HTTPS URLs; notes are a single free-text field; requested quantity is 1–100. New forms select the agreed defaults, while edits retain existing choices. Image preview failure does not prevent saving. Every save carries the gift's revision: stale saves are rejected and the user must reopen the latest version. Changing the recipient or reducing capacity is blocked when it would invalidate existing selections.
+
+Archiving hides a gift and its units from active lists without deleting any claims. Editors can restore archived gifts. Archived gifts reject new reservations and purchases; an owner of a selection can still undo it through the checked API. Editors cannot alter another purchaser's claims.
+
+Both editors can add, remove or restore viewers. Only the owner can grant/change editor roles or remove/restore editors. The owner cannot be demoted or deactivated through this API. Removing access sets active=false; it does not delete identity or claims. Every protected RPC checks the current private membership, so an existing token does not bypass removal. Browser refreshes recheck membership. Adding an email does not create a Supabase Auth user or send an invitation; the person requests their own sign-in link.
+
+Family access shows email, role and allowed/removed status only to editors. Updates carry a membership revision and ACL writes serialize. Neither the browser's email label nor user-editable JWT metadata determines permissions.
+
+The generic `backend/editor-support.sql` documents the applied schema/functions; role assignments are deliberately absent. It has already been applied; do not rerun it.
+
+Editor verification passed in rollback transactions: create/edit, stale-save rejection, unsafe-link validation, viewer denial, editor adds viewer but cannot escalate/change editors, owner promotion/removal with owner protection, inactive-account denial, archive/restore preserving claims, capacity protection, and purchaser-only undo. Simulated UI checks passed for defaults, general ideas, field feedback, quantity payloads, preservation of edits, conflict feedback, access controls and private cleanup. Live visual/browser verification is still required; no real family emails were sent during tests.

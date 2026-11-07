@@ -18,7 +18,7 @@ async function request(path,body,authenticated=true,method='POST'){
  const result=await response.json().catch(()=>null);if(!response.ok)throw Error((result?.message||result?.msg||result?.error_description||'The request was rejected.')+' (HTTP '+response.status+(result?.error_code?', '+result.error_code:'')+')');return result;
 }
 function notice(text){$('#connection').textContent=text;}
-function lockWishlist(){authorized=false;data={people:[],gifts:[]};statuses=[];person='all';}
+function lockWishlist(){window.wishlistEditor?.clear();authorized=false;data={people:[],gifts:[]};statuses=[];person='all';}
 async function refresh(){
  if(refreshing)return;
  if(!connected()||!session){lockWishlist();notice('Sign in to view our family wishlists. Access is limited to approved family email addresses.');render();return;}
@@ -34,6 +34,7 @@ async function refresh(){
  finally{refreshing=false;if(version===generation)render();}
 }
 function render(){
+ window.wishlistEditor?.sync(data,authorized);
  $('#logout').hidden=!session;$('#signin').hidden=!!session;$('#account-email').hidden=!session;
  $('#account-email').textContent=session?.user?.email||(session?'Account unavailable':'');$('#login').hidden=!!session;
  $('#wishlist').hidden=!authorized;$('#welcome').hidden=authorized;$('#gifts').replaceChildren();$('#people').replaceChildren();
@@ -85,7 +86,7 @@ function render(){
    }
    row.append(actions);selections.append(row);
   }
-  content.append(selections);card.append(art,content);$('#gifts').append(card);
+  content.append(selections);if(['editor','owner'].includes(data.account?.role)){const edit=node('button','Edit gift','edit-gift');edit.type='button';edit.onclick=()=>window.wishlistEditor.openGift(g.id);content.append(edit);}card.append(art,content);$('#gifts').append(card);
  }
 }
 async function change(id,unitNo,status){
@@ -101,6 +102,7 @@ async function signOut(){
  if(token&&connected()){try{await fetch(config.supabaseUrl+'/auth/v1/logout',{method:'POST',headers:{apikey:config.publishableKey,Authorization:'Bearer '+token}});}catch{authFeedback('Signed out on this device. The server could not be reached to revoke the session.');}}
 }
 async function start(){try{
+ window.wishlistEditor?.init({request,refresh,notify:notice,safeURL,getData:()=>data,getPerson:()=>person,getGeneration:()=>generation});
  $('#logout').onclick=signOut;render();
  const result=await fetch('config.json',{cache:'no-store'});if(!result.ok)throw Error('Unable to load connection settings');config=await result.json();
  if(config.supabaseUrl&&!/^https:\/\/[a-z0-9-]+\.supabase\.co$/.test(config.supabaseUrl))throw Error('Invalid backend URL');

@@ -19,7 +19,7 @@ Maintain the existing app at `fbadillo97/christmas-wishlist`, hosted at https://
 
 ## Save privately
 
-Read the relevant existing entries before writing so a repeat request does not create duplicates. A request to add/update an entry authorizes that narrow change; do not ask for confirmation again when the intended entry and values are clear.
+Read the relevant existing entries, including archived records, before writing so a repeat request does not create duplicates. Check whether an archived matching entry should be restored rather than duplicated. A request to add/update an entry authorizes that narrow change; do not ask for confirmation again when the intended entry and values are clear.
 
 `wishlist_private.gift_catalog` has:
 - `id`: stable text ID; preserve on edits.
@@ -29,7 +29,7 @@ Read the relevant existing entries before writing so a repeat request does not c
 
 Use Supabase execute_sql for data changes; quote values safely. Insert explicit kind/quantity and JSON preferences so the saved record is unambiguous. The database also supplies preference defaults when omitted. Patch only requested fields on updates; preserve other notes, links, and preferences. Do not change total quantity when the request only changes a note.
 
-The existing claims use `(gift_id, unit_no)`. Never delete/reinsert a gift or rewrite claims to edit its metadata. The database blocks quantity reductions that would discard a claimed unit. If blocked, report it and ask how to resolve the existing selections; do not release another person's gift.
+Catalog records also have `revision` (automatically incremented on updates) and `archived`. Preserve them; never reset a revision or reactivate a gift unless requested. The web editor uses revisions to reject stale saves.\n\nThe existing claims use `(gift_id, unit_no)`. Never delete/reinsert a gift or rewrite claims to edit its metadata. The database blocks quantity reductions that would discard a claimed unit. If blocked, report it and ask how to resolve the existing selections; do not release another person's gift.
 
 Gift details, real seed data, recipients, and family emails belong only in private Supabase storage. Never put them in public repository files, skill examples, or commit messages. Only generic code/schema/docs may be public. Do not restore a public wishlist JSON. Routine data edits need no website deployment.
 
