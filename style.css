@@ -15,3 +15,5 @@
 @media(max-width:620px){.account-controls{flex-wrap:wrap}.header-right{max-width:100%}.form-grid{grid-template-columns:1fr}.full-width{grid-column:auto}.management-row{align-items:flex-start;flex-direction:column}.management-controls{justify-content:flex-start}.editor-dialog{padding:20px}#access-form{grid-template-columns:minmax(0,1fr) 100px}#access-form button{grid-column:1/-1}.danger-button{margin-left:0}}
 
 .quantity-field{display:grid;gap:4px;align-content:start}.quantity-stepper{display:flex;gap:6px;align-items:center}.editor-dialog .quantity-stepper button{width:42px;flex-shrink:0;padding:10px}.quantity-stepper input{text-align:center}
+
+.passkey-choice{margin:22px 0}.passkey-choice>button{width:100%}.passkey-choice p{font-size:13px;line-height:1.5}.signin-divider{text-align:center;color:var(--muted);margin:22px 0 12px}#passkey-message{font-size:14px;overflow-wrap:anywhere}#passkey-signin-message:empty{display:none}

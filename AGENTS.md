@@ -19,3 +19,6 @@
 
 - Web roles come only from private family_members.role/active and verified Auth identity, never client email or user_metadata. Both editors manage viewers; only the owner manages editors. Owner removal/demotion is blocked. Keep real role assignments out of Git.
 - Gift edits and archives require revision checks. Archive instead of deleting, preserve claims, and do not silently move a selected gift to another recipient. Clear private editor forms and member lists on sign-out or lost authorization; ignore stale editor responses.
+
+- Passkeys use Supabase Auth + native WebAuthn. Keep email-link fallback. Never store credentials/biometrics/PINs or log signed responses/session tokens. Both email and passkey sessions must pass Auth /user and the same private family authorization.
+- Passkey setup/removal applies only to the signed-in user's account; abort ceremonies and ignore delayed responses on sign-out. Never automate device authentication prompts. Changing the RP ID/domain requires re-enrollment.

@@ -18,7 +18,7 @@ async function request(path,body,authenticated=true,method='POST'){
  const result=await response.json().catch(()=>null);if(!response.ok)throw Error((result?.message||result?.msg||result?.error_description||'The request was rejected.')+' (HTTP '+response.status+(result?.error_code?', '+result.error_code:'')+')');return result;
 }
 function notice(text){$('#connection').textContent=text;}
-function lockWishlist(){window.wishlistEditor?.clear();authorized=false;data={people:[],gifts:[]};statuses=[];person='all';}
+function lockWishlist(cancelPasskeys=true){if(cancelPasskeys)window.wishlistPasskeys?.clear();window.wishlistEditor?.clear();authorized=false;data={people:[],gifts:[]};statuses=[];person='all';}
 async function refresh(){
  if(refreshing)return;
  if(!connected()||!session){lockWishlist();notice('Sign in to view our family wishlists. Access is limited to approved family email addresses.');render();return;}
@@ -34,6 +34,7 @@ async function refresh(){
  finally{refreshing=false;if(version===generation)render();}
 }
 function render(){
+ window.wishlistPasskeys?.sync(authorized);
  window.wishlistEditor?.sync(data,authorized);
  $('#logout').hidden=!session;$('#signin').hidden=!!session;$('#account-email').hidden=!session;
  $('#account-email').textContent=session?.user?.email||(session?'Account unavailable':'');$('#login').hidden=!!session;
@@ -96,12 +97,28 @@ async function change(id,unitNo,status){
  catch(error){if(version===generation){await refresh();notice('Selection not saved: '+error.message);}}
  finally{busy=false;if(version===generation)render();}
 }
+async function acceptPasskeySession(result){
+ const value=result?.session||result;
+ if(typeof value?.access_token!=='string'||typeof value?.refresh_token!=='string')throw Error('The passkey service did not return a complete sign-in session.');
+ generation++;const version=generation;lockWishlist(false);
+ saveSession({...value,expires_at:Number(value.expires_at)||(Date.now()/1000+Number(value.expires_in||3600))});render();
+ try{
+  const user=await request('/auth/v1/user',undefined,true,'GET');
+  if(version!==generation||!session)return false;
+  saveSession({...session,user:{email:user.email}});
+  await refresh();return authorized&&version===generation;
+ }catch(error){
+  if(version===generation){saveSession(null);lockWishlist();render();}
+  throw error;
+ }
+}
 async function signOut(){
  const token=session?.access_token;generation++;saveSession(null);lockWishlist();authFeedback('',false);
  notice('You’re signed out. Sign in to view our family wishlists.');render();
  if(token&&connected()){try{await fetch(config.supabaseUrl+'/auth/v1/logout',{method:'POST',headers:{apikey:config.publishableKey,Authorization:'Bearer '+token}});}catch{authFeedback('Signed out on this device. The server could not be reached to revoke the session.');}}
 }
 async function start(){try{
+ window.wishlistPasskeys?.init({request,acceptSession:acceptPasskeySession,notify:notice,ready:connected,getGeneration:()=>generation});
  window.wishlistEditor?.init({request,refresh,notify:notice,safeURL,getData:()=>data,getPerson:()=>person,getGeneration:()=>generation});
  $('#logout').onclick=signOut;render();
  const result=await fetch('config.json',{cache:'no-store'});if(!result.ok)throw Error('Unable to load connection settings');config=await result.json();

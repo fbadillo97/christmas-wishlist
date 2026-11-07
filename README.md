@@ -57,3 +57,17 @@ Family access shows email, role and allowed/removed status only to editors. Upda
 The generic `backend/editor-support.sql` documents the applied schema/functions; role assignments are deliberately absent. It has already been applied; do not rerun it.
 
 Editor verification passed in rollback transactions: create/edit, stale-save rejection, unsafe-link validation, viewer denial, editor adds viewer but cannot escalate/change editors, owner promotion/removal with owner protection, inactive-account denial, archive/restore preserving claims, capacity protection, and purchaser-only undo. Simulated UI checks passed for defaults, general ideas, field feedback, quantity payloads, preservation of edits, conflict feedback, access controls and private cleanup. Live visual/browser verification is still required; no real family emails were sent during tests.
+
+## Passkeys
+
+Approved family members can use Passkeys in the account header to create/list/remove their own keys. Initial enrollment requires an existing confirmed email-link session. The sign-in dialog offers Sign in with a passkey and keeps email links available. Unsupported browsers show an explanation and retain email sign-in.
+
+Supabase Authentication → Passkeys must be enabled with RP ID `fbadillo97.github.io`, allowed origin `https://fbadillo97.github.io`, and a family-wishlist display name. A changed domain/RP ID requires re-enrollment. Do not add the project path to RP ID/origin.
+
+The buildless app uses native WebAuthn and the same two-step REST endpoints as Supabase Auth's client: registration/options and registration/verify require the current session; authentication/options and authentication/verify return a new session. Binary challenge/credential fields use base64url, with native JSON conversion where supported. The returned session is checked against Auth /user and then the existing private family allowlist. A passkey does not grant membership or editor roles.
+
+No private key, biometric, device PIN or passkey secret is handled by the app. Only the browser's signed response is sent to Supabase Auth. Removing a passkey revokes it for this account; it may still appear in the user's password manager. Email-link recovery remains available.
+
+Passkey endpoints were checked against [Supabase passkey documentation](https://supabase.com/docs/guides/auth/passkeys) and [the current Auth implementation](https://github.com/supabase/supabase-js/blob/master/packages/core/auth-js/src/GoTrueClient.ts). Supabase currently labels the feature experimental. There is no new third-party runtime dependency.
+
+Verification passed with synthetic browser/auth responses: base64url conversion, credential serialization, session-required registration, passkey authentication/session acceptance, device cancellation, unsupported browsers, stale operations after sign-out, server-user verification, incomplete-session rejection and unapproved-family denial. Actual device enrollment and sign-in require the user's native browser/device prompt; these have not yet been confirmed on the live site.
