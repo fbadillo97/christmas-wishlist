@@ -26,3 +26,5 @@
 - My selections must return only the authenticated member’s claims, including archived gifts for undo. Keep purchaser IDs private; archived gifts cannot receive new selections. Clear action feedback on sign-out and preserve confirmations across routine refreshes.
 
 - Family photos remain in private backend storage, never public Git or static assets. Fetch only after family authorization; invalidate delayed photo responses and revoke blob URLs on sign-out/lost access. Do not persist photo bytes in localStorage or use public sharing URLs. Preserve originals; strip metadata from display copies.
+
+- Platform Roadmap data is owner-only and belongs in the private Supabase schema behind verified-role RPCs. Keep public Markdown specifications free of real gifts, member details, private buyer notes and secrets. Treat roadmap entries as proposals until approved; keep stable feature IDs aligned with `docs/platform-roadmap/features/` and preserve change history. Mark work Completed only after deployment and verification; use archive/reopen flows rather than deleting history.
