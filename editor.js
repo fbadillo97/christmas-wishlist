@@ -28,7 +28,7 @@
   if(!canEdit())return;
   const data=api.getData();editing=id?data.gifts.find(g=>g.id===id):null;
   if(id&&!editing){api.notify('This gift changed. Refresh and try again.');return;}
-  $('#gift-form').reset();$('#archive-confirm').hidden=true;matchTouched=Boolean(editing);
+  $('#gift-form').reset();$('#archive-confirm').hidden=true;$('#archive-gift').setAttribute('aria-expanded','false');matchTouched=Boolean(editing);
   $('#gift-person').replaceChildren();
   for(const p of data.people){const option=make('option',p.name);option.value=p.id;$('#gift-person').append(option);}
   const g=editing||{person:api.getPerson()==='all'?data.people[0]?.id:api.getPerson(),kind:'product',reservation_mode:'limited',quantity:1,match:'exact',used:true};
@@ -73,7 +73,7 @@
   if(!canEdit()||busy)return;const version=api.getGeneration();giftBusy(true);
   try{await api.request('/rest/v1/rpc/editor_archive_gift',{p_id:gift.id,p_revision:gift.revision,p_archived:archive});
    if(version!==api.getGeneration()||!canEdit())return;close('#gift-dialog');await api.refresh();
-   api.notify(archive?'Gift archived. Existing selections are preserved.':'Gift restored.');
+   api.notify(archive?'Gift removed from the wishlist. Existing selections are preserved. You can restore it in Archived gifts.':'Gift restored.');
    if($('#archive-dialog').open)await loadArchive();
   }catch(error){if(version===api.getGeneration())message($('#gift-dialog').open?'#gift-form-message':'#archive-message',error.message);}
   finally{if(version===api.getGeneration())giftBusy(false);}
@@ -145,7 +145,7 @@
   $('#gift-kind').onchange=()=>{if(!editing){$('#gift-reservation_mode').value=$('#gift-kind').value==='idea'?'open-ended':'limited';syncMode();}if(!editing&&!matchTouched)$('#gift-match').value=$('#gift-kind').value==='idea'?'similar':'exact';};
   $('#gift-match').onchange=()=>{matchTouched=true;};$('#gift-image').onchange=preview;
   $('#gift-image-preview').onerror=()=>{$('#gift-image-preview').hidden=true;$('#image-preview-message').textContent='Image could not load. You can still save the gift.';};
-  $('#archive-gift').onclick=()=>{$('#archive-confirm').hidden=false;};$('#cancel-archive').onclick=()=>{$('#archive-confirm').hidden=true;};
+  $('#archive-gift').onclick=()=>{if(busy||!editing)return;$('#archive-confirm').hidden=false;$('#archive-gift').setAttribute('aria-expanded','true');$('#cancel-archive').focus();};$('#cancel-archive').onclick=()=>{if(busy)return;$('#archive-confirm').hidden=true;$('#archive-gift').setAttribute('aria-expanded','false');$('#archive-gift').focus();};
   $('#confirm-archive').onclick=()=>{if(editing)archiveGift(editing,true);};
   $('#view-archive').onclick=()=>{open('#archive-dialog');loadArchive();};$('#close-archive').onclick=()=>close('#archive-dialog');
   $('#family-access').onclick=()=>{location.href='admin.html';};$('#close-access').onclick=()=>close('#access-dialog');

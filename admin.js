@@ -1,10 +1,11 @@
 (() => {
  const $=s=>document.querySelector(s),make=(tag,text,cls)=>{const el=document.createElement(tag);if(text)el.textContent=text;if(cls)el.className=cls;return el;};
  let api,role=null,members=[],editing=null,busy=false,signature='',dirty=false,tracking=[],trackingSignature='',activeSection=location.hash==='#gift-tracking'?'tracking':'accounts';
+ let sortKey='first_name',sortDirection=1;const tableFilterKeys=['role','access','signed','passkey','welcome'];const collator=new Intl.Collator(undefined,{sensitivity:'base',numeric:true});
  const allowed=()=>['owner','editor'].includes(role);
  const message=(text,error=false)=>{const el=$('#admin-message');el.textContent=text;el.classList.toggle('error',error);};
  function reset(){$('#account-editor').open=false;editing=null;dirty=false;$('#member-form').reset();$('#member-id').textContent='Assigned when saved';$('#member-email').readOnly=false;$('#member-form-title').textContent='Add account';$('#cancel-member').hidden=true;$('#member-active').checked=true;$('#member-role').value='viewer';$('#member-role').disabled=role!=='owner';$('#member-active').disabled=false;$('#owner-option').hidden=true;}
- function clear(){clearTracking();window.wishlistRoadmap?.clear();$('#roadmap-link').hidden=true;role=null;members=[];signature='';busy=false;reset();for(const id of ['member-name','member-last-name','member-email','save-member','cancel-member','refresh-members'])$('#'+id).disabled=false;$('#member-list').replaceChildren();$('#member-count').textContent='';$('#member-search').value='';$('#administration').hidden=true;message('');}
+ function clear(){resetTableFilters();sortKey='first_name';sortDirection=1;updateSortHeaders();clearTracking();window.wishlistRoadmap?.clear();$('#roadmap-link').hidden=true;role=null;members=[];signature='';busy=false;reset();for(const id of ['member-name','member-last-name','member-email','save-member','cancel-member','refresh-members'])$('#'+id).disabled=false;$('#member-list').replaceChildren();$('#member-count').textContent='';$('#member-search').value='';$('#administration').hidden=true;message('');}
  function sync(data,authorized){
   const nextRole=authorized?data.account?.role:null;
   if(!['owner','editor'].includes(nextRole)){clear();return;}
@@ -67,9 +68,35 @@
   $('#account-editor').open=true;editing={...member};dirty=false;$('#member-form-title').textContent='Edit account';$('#member-name').value=member.first_name||'';$('#member-last-name').value=member.last_name||'';$('#member-id').textContent=member.account_id||'Assigned when saved';$('#member-email').value=member.email;$('#member-email').readOnly=true;
   $('#owner-option').hidden=member.role!=='owner';$('#member-role').value=member.role;$('#member-role').disabled=role!=='owner'||member.role==='owner';$('#member-active').checked=member.active;$('#member-active').disabled=member.role==='owner';$('#cancel-member').hidden=false;message('');$('#member-name').focus();
  }
+ function resetTableFilters(){for(const key of tableFilterKeys)$('#member-filter-'+key).value='all';$('#member-search').value='';}
+ function updateSortHeaders(){
+  for(const th of document.querySelectorAll('.account-table th[data-sort]')){
+   const selected=th.dataset.sort===sortKey;th.setAttribute('aria-sort',selected?(sortDirection===1?'ascending':'descending'):'none');
+   const button=th.querySelector('button');if(button)button.textContent=th.dataset.label+(selected?(sortDirection===1?' ↑':' ↓'):' ↕');
+  }
+ }
+ function sortValue(member){
+  if(sortKey==='active'||sortKey==='has_signed_in'||sortKey==='has_passkey')return Number(Boolean(member[sortKey]));
+  if(sortKey==='invitation_sent_at')return member.invitation_sent_at?Date.parse(member.invitation_sent_at):null;
+  if(sortKey==='invitation_status')return ({not_sent:'Not sent',sending:'Sending',sent:'Sent',failed:'Failed',unknown:'Uncertain'})[member.invitation_status||'not_sent'];
+  return String(member[sortKey]||'').trim()||null;
+ }
+ function compareMembers(a,b){
+  const av=sortValue(a),bv=sortValue(b);if(av===null&&bv!==null)return 1;if(bv===null&&av!==null)return -1;
+  const result=av===null?0:typeof av==='number'?av-bv:collator.compare(av,bv);
+  return result*sortDirection||collator.compare(a.email||'',b.email||'');
+ }
  function render(){
   const list=$('#member-list');list.replaceChildren();const query=$('#member-search').value.trim().toLowerCase();
-  const filtered=members.filter(m=>(m.email+' '+(m.first_name||'')+' '+(m.last_name||'')+' '+(m.account_id||'')).toLowerCase().includes(query));
+  const filters=Object.fromEntries(tableFilterKeys.map(key=>[key,$('#member-filter-'+key).value]));
+  const filtered=members.filter(m=>(m.email+' '+(m.first_name||'')+' '+(m.last_name||'')+' '+(m.account_id||'')).toLowerCase().includes(query))
+   .filter(m=>filters.role==='all'||m.role===filters.role)
+   .filter(m=>filters.access==='all'||Boolean(m.active)===(filters.access==='active'))
+   .filter(m=>filters.signed==='all'||Boolean(m.has_signed_in)===(filters.signed==='yes'))
+   .filter(m=>filters.passkey==='all'||Boolean(m.has_passkey)===(filters.passkey==='yes'))
+   .filter(m=>filters.welcome==='all'||(m.invitation_status||'not_sent')===filters.welcome).sort(compareMembers);
+  updateSortHeaders();
+
   $('#member-count').textContent=filtered.length+' / '+members.length+' accounts';
   const states={not_sent:['Not sent','No welcome email recorded'],sending:['Sending…','Send in progress'],sent:['Sent','Accepted by the email service; inbox delivery is not confirmed'],failed:['Failed','Last send failed'],unknown:['Uncertain','Check with the recipient before resending']};
   for(const member of filtered){
@@ -106,7 +133,14 @@
   catch(error){if(version===api.getGeneration()&&allowed()){await reload();if(version===api.getGeneration()&&allowed())message(error.message,true);}}
   finally{if(version===api.getGeneration()&&allowed())pending(false);}
  }
- function init(bridge){api=bridge;$('#accounts-link').onclick=()=>showSection('accounts');$('#tracking-link').onclick=()=>showSection('tracking');$('#roadmap-link').onclick=()=>showSection('roadmap');window.wishlistRoadmap?.init({request:api.request,refresh:api.refresh,getGeneration:api.getGeneration,getRole:()=>role});for(const id of ['tracking-status','tracking-recipient','tracking-person'])$('#'+id).onchange=renderTracking;$('#refresh-tracking').onclick=reload;$('#member-form').onsubmit=save;$('#member-form').oninput=()=>{dirty=true;};$('#member-form').onchange=()=>{dirty=true;};$('#cancel-member').onclick=()=>{if(!busy){reset();message('');}};$('#member-search').oninput=render;$('#refresh-members').onclick=reload;window.addEventListener('beforeunload',event=>{if(dirty){event.preventDefault();event.returnValue='';}});}
+ function init(bridge){api=bridge;
+  for(const th of document.querySelectorAll('.account-table th[data-sort]')){
+   th.dataset.label=th.textContent;const button=make('button',th.textContent,'account-sort');button.type='button';button.setAttribute('aria-label','Sort by '+th.dataset.label);
+   button.onclick=()=>{sortDirection=sortKey===th.dataset.sort?-sortDirection:1;sortKey=th.dataset.sort;render();};th.replaceChildren(button);
+  }
+  for(const key of tableFilterKeys)$('#member-filter-'+key).onchange=render;
+  $('#member-reset-filters').onclick=()=>{resetTableFilters();render();};
+$('#accounts-link').onclick=()=>showSection('accounts');$('#tracking-link').onclick=()=>showSection('tracking');$('#roadmap-link').onclick=()=>showSection('roadmap');window.wishlistRoadmap?.init({request:api.request,refresh:api.refresh,getGeneration:api.getGeneration,getRole:()=>role});for(const id of ['tracking-status','tracking-recipient','tracking-person'])$('#'+id).onchange=renderTracking;$('#refresh-tracking').onclick=reload;$('#member-form').onsubmit=save;$('#member-form').oninput=()=>{dirty=true;};$('#member-form').onchange=()=>{dirty=true;};$('#cancel-member').onclick=()=>{if(!busy){reset();message('');}};$('#member-search').oninput=render;$('#refresh-members').onclick=reload;window.addEventListener('beforeunload',event=>{if(dirty){event.preventDefault();event.returnValue='';}});}
  window.wishlistAdmin={init,sync,clear};
 })();
 

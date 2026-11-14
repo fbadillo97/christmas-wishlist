@@ -1,0 +1,15 @@
+import {JSDOM} from 'jsdom';
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+const dom=new JSDOM(fs.readFileSync(new URL('../index.html',import.meta.url),'utf8'),{url:'https://example.invalid',runScripts:'outside-only'}),w=dom.window;
+w.HTMLDialogElement.prototype.showModal=function(){this.open=true;};w.HTMLDialogElement.prototype.close=function(){this.open=false;};
+const gift={id:'synthetic',person:'p',title:'Synthetic gift',kind:'idea',reservation_mode:'open-ended',quantity:1,match:'similar',used:true,revision:4};
+const calls=[],notifications=[];let version=1;
+w.eval(fs.readFileSync(new URL('../editor.js',import.meta.url),'utf8'));
+w.wishlistEditor.init({getData:()=>({people:[{id:'p',name:'Test'}],gifts:[gift]}),getPerson:()=> 'all',getGeneration:()=>version,safeURL:()=>null,request:async(...a)=>calls.push(a),refresh:async()=>{},notify:x=>notifications.push(x)});
+w.wishlistEditor.sync({account:{role:'editor'}},true);w.wishlistEditor.openGift(gift.id);
+const $=s=>w.document.querySelector(s);
+assert.equal($('#archive-gift').textContent,'Delete gift');$('#archive-gift').click();assert.equal($('#archive-confirm').hidden,false);assert.equal(w.document.activeElement.id,'cancel-archive');$('#cancel-archive').click();assert.equal(calls.length,0);
+$('#archive-gift').click();$('#confirm-archive').onclick();await new Promise(r=>setTimeout(r,0));assert.equal(calls.length,1);assert.equal(calls[0][0],'/rest/v1/rpc/editor_archive_gift');assert.deepEqual(JSON.parse(JSON.stringify(calls[0][1])),{p_id:'synthetic',p_revision:4,p_archived:true});assert.equal($('#gift-dialog').open,false);assert.match(notifications[0],/restore/);
+w.wishlistEditor.openGift();assert.equal($('#archive-gift').hidden,true);w.wishlistEditor.clear();assert.equal($('#gift-dialog').open,false);
+console.log('Delete confirmation, cancel, revision-checked removal, new-gift hiding, sign-out clearing passed');dom.window.close();

@@ -180,3 +180,15 @@ Specifications and planning rules are in [`docs/platform-roadmap/`](docs/platfor
 The schema and seed script is [`backend/platform-roadmap.sql`](backend/platform-roadmap.sql); explicit direct-denial policies are in [`backend/platform-roadmap-access.sql`](backend/platform-roadmap-access.sql), and the verified completion action is in [`backend/platform-roadmap-verification.sql`](backend/platform-roadmap-verification.sql). The live Supabase project has these migrations applied. For a fresh project, apply the schema/seed migration first, then the access-policy migration, then the verification migration. Do not run the seed script twice. No emails or invitations are part of these changes.
 
 Run `tests/platform-roadmap.sql` against a configured test project as a privileged SQL role. It verifies the ten seeded rows, owner-only reads, role restrictions, status/completion/archive transitions and audit history in a rollback-only transaction. It requires an active owner account in the test project and creates no lasting records.
+
+
+## Delete gift
+
+Editors and the owner can open **Edit gift → Delete gift** and confirm removal. This is a recoverable removal: the existing authorized, revision-checked archive RPC removes the gift from active wishlists while preserving all reservations, purchases and private selection notes. **Archived gifts → Restore** brings it back. The confirmation initially focuses Keep gift, and cancellation makes no backend request. No hard delete or email is performed.
+
+
+## User table controls
+
+The First name column stays visible during horizontal scrolling. Column headings sort ascending/descending using keyboard-accessible buttons and aria-sort. Filters for role, access, sign-in, passkeys and welcome-email status combine with the existing name/email/account-ID search. Clear filters resets search and filters; routine refreshes preserve controls, and losing access clears them. These controls only change the view, not account data.
+
+Verification: delete-confirmation checks passed for cancellation without requests, the authorized revision-checked archive call, new-gift hiding and sign-out clearing. Browser checks passed at 390px and 1024px for ascending/descending names, combined filters, empty results, search, refresh retention, frozen first-name cells/headers, no page overflow and clearing on lost access. No real gifts/accounts were changed and no emails were sent. Tests: `tests/delete-gift.mjs` (jsdom 26.1.0) and `tests/admin-table-controls.mjs` (Playwright 1.56.1 / Chromium).
