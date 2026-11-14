@@ -104,7 +104,7 @@
     const toggle=make('button',member.active?'Remove access':'Restore access');toggle.type='button';toggle.disabled=busy;
     toggle.onclick=()=>{if(member.active&&!window.confirm('Remove wishlist access for '+member.email+'? Existing gift selections will be preserved.'))return;setMember(member,member.role,!member.active);};
     controls.append(toggle);
-    if(member.active){const invite=make('button',member.invitation_attempted_at?'Resend invitation':'Send invitation');invite.type='button';invite.disabled=busy;invite.onclick=()=>sendInvitation(member);controls.append(invite);}
+    if(member.active){const invite=make('button',member.invitation_attempted_at?'Resend welcome email':'Send welcome email');invite.type='button';invite.disabled=busy;invite.onclick=()=>sendInvitation(member);controls.append(invite);}
     row.append(controls);
    }
    $('#access-list').append(row);
@@ -117,9 +117,9 @@
  }
  async function sendInvitation(member){
   if(!canEdit()||busy)return;
-  if(!window.confirm('Send a wishlist welcome/sign-in email to '+member.email+' now?'))return;
-  const version=api.getGeneration();busy=true;$('#allow-access').disabled=true;renderMembers();message('#access-message','Sending invitation…',false);
-  try{const result=await api.request('/functions/v1/wishlist-invite',{email:member.email,revision:member.revision});
+  if(!window.confirm('Send a welcome email with the permanent wishlist link to '+member.email+' now?'))return;
+  const version=api.getGeneration();busy=true;$('#allow-access').disabled=true;renderMembers();message('#access-message','Sending welcome email…',false);
+  try{const result=await api.request('/functions/v1/wishlist-welcome',{email:member.email,revision:member.revision});
    if(version!==api.getGeneration()||!canEdit())return;
    await loadMembers();if(version===api.getGeneration()&&canEdit())message('#access-message',result.message,false);
   }catch(error){if(version===api.getGeneration()&&canEdit()){await loadMembers();if(version===api.getGeneration()&&canEdit())message('#access-message',error.message);}}

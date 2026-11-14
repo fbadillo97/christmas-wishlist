@@ -17,7 +17,7 @@ async function request(path,body,authenticated=true,method='POST'){
   await tokenRefreshPromise;
  }
 
- const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),15000);let response;try{response=await fetch(config.supabaseUrl+path,{method,cache:'no-store',headers:{'Content-Type':'application/json',apikey:config.publishableKey,...(authenticated&&session?{Authorization:'Bearer '+session.access_token}:{})},...(method==='GET'?{}:{body:JSON.stringify(body)}),signal:controller.signal});}catch(e){throw Error(e.name==='AbortError'?'The request timed out. Check your connection and try again.':'Could not reach sign-in. Check your connection or browser blocking settings.');}finally{clearTimeout(timer);}
+ const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),path==='/functions/v1/wishlist-welcome'?30000:15000);let response;try{response=await fetch(config.supabaseUrl+path,{method,cache:'no-store',headers:{'Content-Type':'application/json',apikey:config.publishableKey,...(authenticated&&session?{Authorization:'Bearer '+session.access_token}:{})},...(method==='GET'?{}:{body:JSON.stringify(body)}),signal:controller.signal});}catch(e){throw Error(e.name==='AbortError'?'The request timed out. Check your connection and try again.':'Could not reach sign-in. Check your connection or browser blocking settings.');}finally{clearTimeout(timer);}
  const result=await response.json().catch(()=>null);if(!response.ok)throw Error((result?.message||result?.msg||result?.error_description||'The request was rejected.')+' (HTTP '+response.status+(result?.error_code?', '+result.error_code:'')+')');return result;
 }
 function notice(text){$('#connection').textContent=text;}

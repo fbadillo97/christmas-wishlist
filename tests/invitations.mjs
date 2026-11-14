@@ -1,24 +1,47 @@
+// No live network or SMTP calls: run with node tests/invitations.mjs.
 import {readFileSync} from 'node:fs';
 import assert from 'node:assert/strict';
-const code=readFileSync(new URL('../supabase/functions/wishlist-invite/index.ts',import.meta.url),'utf8').replace('export async function handle','async function handle').replace('Deno.serve(handle);','return handle;');
-const req=(auth='Bearer test',origin='https://fbadillo97.github.io')=>new Request('https://example.invalid',{method:'POST',headers:{...(auth?{authorization:auth}:{}),origin,'content-type':'application/json'},body:JSON.stringify({email:'test@example.invalid',revision:1})});
-const auth={body:{id:'actor',email_confirmed_at:'confirmed'}};
-const claim={body:{attempt:'attempt',email:'test@example.invalid',existing_user:false}};
-async function check(name,request,responses,status,paths,recorded){
- const calls=[];
- const handler=new Function('Deno','fetch','Response','AbortSignal',code)({env:{get:n=>n==='SUPABASE_URL'?'https://example.invalid':'server-secret'}},async(path,options)=>{
-  calls.push({path,body:options.body?JSON.parse(options.body):null});const r=responses.shift();if(r instanceof Error)throw r;assert.ok(r,'Unexpected network call');return new Response(JSON.stringify(r.body),{status:r.status||200});
- },Response,AbortSignal);
- const result=await handler(request);assert.equal(result.status,status,name);assert.equal(calls.length,paths.length,name);
- calls.forEach((c,i)=>assert.ok(c.path.includes(paths[i]),name));
- if(recorded)assert.equal(calls.at(-1).body.p_status,recorded,name);
- assert.ok(!JSON.stringify(await result.json()).includes('server-secret'));console.log(name+': passed');
+const directory=new URL('../supabase/functions/wishlist-welcome/',import.meta.url);
+const renderer=readFileSync(new URL('welcome-email.js',directory),'utf8');
+const welcomeEmail=new Function(renderer.replaceAll('export const','const').replaceAll('export function','function')+';return welcomeEmail;')();
+const code=readFileSync(new URL('index.ts',directory),'utf8').replace(/^import .*;\n/gm,'').replace('export async function','async function').replace('Deno.serve(handle);','return handle;');
+const contact='contact@example.invalid';
+const request=(authorization='Bearer signed-in',origin='https://fbadillo97.github.io')=>new Request('https://example.invalid',{method:'POST',headers:{...(authorization?{authorization}:{}),origin,'content-type':'application/json'},body:JSON.stringify({email:'recipient@example.invalid',revision:1,first_name:'Untrusted name',html:'Untrusted body',cc:'untrusted@example.invalid'})});
+async function check(name,{req=request(),claimStatus=200,error=null,accepted=true,configured=true,expected=200}={}){
+ const calls=[],emails=[];let closed=false;
+ const handler=new Function('Deno','fetch','Response','AbortSignal','nodemailer','welcomeEmail',code)(
+  {env:{get:n=>({SUPABASE_URL:'https://example.invalid',SUPABASE_SERVICE_ROLE_KEY:'server-secret',WISHLIST_SMTP_USERNAME:configured?'sender@example.invalid':null,WISHLIST_SMTP_PASSWORD:configured?'smtp-secret':null})[n]}},
+  async(path,options)=>{
+   calls.push({path,body:options.body?JSON.parse(options.body):null});let data;
+   if(path.endsWith('/user'))data={id:'actor',email_confirmed_at:'confirmed'};
+   else if(path.endsWith('wishlist_begin_invitation'))data=claimStatus===200?{attempt:'attempt',email:'recipient@example.invalid',first_name:'Example <name>',contact_email:contact}:{code:'42501',message:'Editor access required'};
+   else if(path.endsWith('wishlist_finish_invitation'))data=null;
+   else throw Error('Unexpected API: '+path);
+   return new Response(JSON.stringify(data),{status:path.endsWith('wishlist_begin_invitation')?claimStatus:200});
+  },Response,AbortSignal,
+  {createTransport:options=>{assert.equal(options.port,465);assert.equal(options.secure,true);return {sendMail:async email=>{emails.push(email);if(error)throw error;return {accepted:accepted?['recipient@example.invalid',contact]:[]};},close:()=>{closed=true;}};}},welcomeEmail);
+ const response=await handler(req);assert.equal(response.status,expected,name);
+ const result=JSON.stringify(await response.json());assert.ok(!result.includes('smtp-secret')&&!result.includes('server-secret'));
+ assert.ok(!calls.some(c=>/\/otp|\/invite\?/.test(c.path)),'Welcome must not invoke Auth email APIs');
+ if(emails.length){
+  assert.ok(closed);assert.equal(emails.length,1);assert.equal(emails[0].cc,contact);assert.equal(emails[0].replyTo,contact);
+  assert.ok(emails[0].html.includes('Hi Example &lt;name&gt;,'));assert.ok(!emails[0].html.includes('Untrusted'));
+  assert.ok(emails[0].text.includes('This sending address isn’t monitored.'));
+  const links=[...emails[0].html.matchAll(/href="([^"]+)"/g)].map(m=>m[1]);assert.ok(links.every(x=>x==='https://fbadillo97.github.io/christmas-wishlist/'||x==='mailto:'+contact));
+  const outcome=error?(Number(error.responseCode)>=400?'failed':'unknown'):accepted?'sent':'failed';
+  assert.equal(calls.find(c=>c.path.endsWith('wishlist_finish_invitation'))?.body.p_status,outcome);
+ }
+ if(expected===200)assert.equal(emails.length,1);
+ if([401,403,503].includes(expected))assert.equal(emails.length,0);
+ console.log(name+': passed');
 }
-await check('Missing authentication',req(null),[],401,[]);
-await check('Disallowed origin',req('Bearer test','https://evil.invalid'),[],403,[]);
-await check('Invalid session',req(),[{status:401,body:{}}],401,['/auth/v1/user']);
-await check('Viewer rejected before email',req(),[auth,{status:403,body:{code:'42501'}}],403,['/auth/v1/user','wishlist_begin_invitation']);
-await check('New account invitation',req(),[auth,claim,{body:{}},{body:null}],200,['/auth/v1/user','wishlist_begin_invitation','/auth/v1/invite?','wishlist_finish_invitation'],'sent');
-await check('Existing account resend',req(),[auth,{body:{...claim.body,existing_user:true}},{body:{}},{body:null}],200,['/auth/v1/user','wishlist_begin_invitation','/auth/v1/otp?','wishlist_finish_invitation'],'sent');
-await check('Rate limit recorded',req(),[auth,claim,{status:429,body:{}},{body:null}],429,['/auth/v1/user','wishlist_begin_invitation','/auth/v1/invite?','wishlist_finish_invitation'],'failed');
-await check('Ambiguous send never retried',req(),[auth,claim,new Error('timeout'),{body:null}],502,['/auth/v1/user','wishlist_begin_invitation','/auth/v1/invite?','wishlist_finish_invitation'],'unknown');
+await check('Personalized permanent welcome with trusted CC and Reply-To');
+await check('Missing authentication',{req:request(null),expected:401});
+await check('Wrong origin',{req:request('Bearer signed-in','https://evil.invalid'),expected:403});
+await check('Viewer/non-admin denied',{claimStatus:403,expected:403});
+await check('Missing SMTP settings sends nothing',{configured:false,expected:503});
+await check('SMTP rejection recorded',{error:{responseCode:535},expected:502});
+await check('SMTP timeout never retried',{error:{code:'ETIMEDOUT'},expected:502});
+assert.ok(welcomeEmail('',contact).html.includes('Hi there,'));
+assert.throws(()=>welcomeEmail('Example','bad\ncontact@example.invalid'));
+console.log('Fallback greeting and contact validation: passed');

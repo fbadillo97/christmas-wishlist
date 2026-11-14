@@ -65,7 +65,7 @@
    info.append(make('p',states[member.invitation_status]||states.not_sent));if(member.invitation_sent_at)info.append(make('p','Last sent '+new Date(member.invitation_sent_at).toLocaleString()));
    const controls=make('div',null,'management-controls');const editable=role==='owner'||member.role==='viewer';
    if(editable){const button=make('button','Edit account');button.type='button';button.disabled=busy;button.onclick=()=>edit(member);controls.append(button);}
-   if(editable&&member.role!=='owner'&&member.active){const invite=make('button',member.invitation_attempted_at?'Resend invitation':'Send invitation');invite.type='button';invite.disabled=busy;invite.onclick=()=>send(member);controls.append(invite);}
+   if(editable&&member.role!=='owner'&&member.active){const invite=make('button',member.invitation_attempted_at?'Resend welcome email':'Send welcome email');invite.type='button';invite.disabled=busy;invite.onclick=()=>send(member);controls.append(invite);}
    row.append(info,controls);list.append(row);
   }
   if(!list.children.length)list.append(make('p','No accounts match your search.'));
@@ -82,10 +82,10 @@
   finally{if(version===api.getGeneration()&&allowed())pending(false);}
  }
  async function send(member){
-  if(!allowed()||busy)return;if(dirty){message('Save or cancel your account changes before sending an invitation.',true);return;}
-  if(!window.confirm('Send a wishlist welcome/sign-in email to '+member.email+' now?'))return;
-  const version=api.getGeneration();pending(true);message('Sending invitation…');
-  try{const result=await api.request('/functions/v1/wishlist-invite',{email:member.email,revision:member.revision});if(version!==api.getGeneration()||!allowed())return;await reload();if(version===api.getGeneration()&&allowed())message(result.message);}
+  if(!allowed()||busy)return;if(dirty){message('Save or cancel your account changes before sending a welcome email.',true);return;}
+  if(!window.confirm('Send a welcome email with the permanent wishlist link to '+member.email+' now?'))return;
+  const version=api.getGeneration();pending(true);message('Sending welcome email…');
+  try{const result=await api.request('/functions/v1/wishlist-welcome',{email:member.email,revision:member.revision});if(version!==api.getGeneration()||!allowed())return;await reload();if(version===api.getGeneration()&&allowed())message(result.message);}
   catch(error){if(version===api.getGeneration()&&allowed()){await reload();if(version===api.getGeneration()&&allowed())message(error.message,true);}}
   finally{if(version===api.getGeneration()&&allowed())pending(false);}
  }
