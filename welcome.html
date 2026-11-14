@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><meta name="referrer" content="no-referrer"><meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' https: blob:; connect-src 'self' https://*.supabase.co; base-uri 'none'; object-src 'none'; form-action 'self'"><title>Welcome · Badillo Family Wishlist</title><meta name="description" content="A little inspiration for a thoughtful family Christmas."><link rel="icon" type="image/svg+xml" href="favicon.svg?v=1"><meta name="theme-color" content="#243f36"><link rel="stylesheet" href="style.css?v=20261114-personal-welcome-1"><script src="signin.js?v=20261107-photo-1" defer></script><script src="welcome.js?v=20261114-onboarding-1" defer></script><script src="passkeys.js?v=20261114-personal-welcome-1" defer></script><script type="module" src="app.js?v=20261114-personal-welcome-1"></script></head>
+<body data-page="welcome"><header><a class="brand" href="./">✳ <span>BADILLO FAMILY</span></a><div class="header-right"><span class="season">CHRISTMAS · 2026</span><div class="account-controls" aria-label="Your account"><button id="signin" class="primary" type="button">Sign in</button><span id="account-email" hidden></span><span id="editor-badge" class="role-badge" hidden>Editor</span><button id="family-access" type="button" hidden>Administration</button><button id="manage-passkeys" type="button" hidden>Passkeys</button><button id="logout" type="button" hidden>Sign out</button></div><p id="signin-error" role="status" aria-live="polite"></p></div></header><dialog id="signin-dialog" aria-labelledby="signin-title"><div class="dialog-heading"><h2 id="signin-title">Family sign-in</h2><button id="close-signin" type="button" aria-label="Close sign-in">✕</button></div><p>Use your invited family email to reserve gifts and manage your selections.</p><div class="passkey-choice"><button id="passkey-signin" type="button" class="primary">Sign in with a passkey</button><p id="passkey-signin-message" role="status" aria-live="polite"></p><details class="passkey-help"><summary>Passkey missing on your phone?</summary><p>Your browser and phone choose the password manager. Check that the passkey was saved in your preferred manager and has synced to this phone. You can always use an email link below.</p></details><p class="signin-divider">or get an email sign-in link</p></div><form id="login"><label for="email">Email address <input id="email" type="email" required autocomplete="email" autofocus></label><button class="primary" type="submit">Send sign-in link</button></form><p id="auth-message" role="status" aria-live="polite"></p></dialog><main><aside id="connection" hidden role="status"></aside><section id="welcome-landing" class="welcome-landing" aria-labelledby="welcome-title">
+ <p class="eyebrow">YOU’RE INVITED · BADILLO FAMILY CHRISTMAS</p>
+ <h1 id="welcome-title">A little Christmas joy.</h1>
+ <p>Browse gift ideas, reserve before shopping, and keep the surprise.</p>
+ <div id="welcome-account-warning" class="notice" hidden><p>You’re signed in with a different account.</p><button id="welcome-switch" type="button">Sign out and use this invitation</button> <a href="./">Continue with my current account</a></div>
+ <form id="welcome-login" hidden><label for="welcome-email">Your invited email<input id="welcome-email" type="email" readonly autocomplete="email"></label><button id="welcome-send" type="submit" class="primary" disabled>Email me a sign-in link</button><p class="field-hint">No password needed. We’ll email a fresh link to this address. Open it to enter the wishlist.</p></form>
+ <p id="welcome-message" role="status" aria-live="polite"></p>
+ <button id="welcome-passkey" type="button">Already have a passkey? Sign in with it</button>
+ <p class="field-hint">You can also use Sign in at the top right. Your personal welcome link stays available while your account has access.</p>
+</section></main>
+<dialog id="gift-dialog" aria-labelledby="gift-dialog-title" class="editor-dialog">
+ <div class="dialog-heading"><h2 id="gift-dialog-title">Add gift</h2><button id="close-gift" type="button" aria-label="Close gift form">✕</button></div>
+ <form id="gift-form" novalidate>
+ <div class="form-grid">
+ <label for="gift-person">Recipient<select id="gift-person" required></select><small id="error-person" class="field-error"></small></label>
+ <label for="gift-kind">Entry type<select id="gift-kind"><option value="product">Specific product</option><option value="idea">General idea</option></select><small id="error-kind" class="field-error"></small></label>
+ <label for="gift-title" class="full-width">Title<input id="gift-title" required maxlength="160"><small id="error-title" class="field-error"></small></label>
+ <label for="gift-url" class="full-width">Product link (optional)<input id="gift-url" type="url" maxlength="2048" placeholder="https://"><small id="error-url" class="field-error"></small></label>
+ <label for="gift-image" class="full-width">Image URL (optional)<input id="gift-image" type="url" maxlength="2048" placeholder="https://"><small id="error-image" class="field-error"></small></label>
+ <div class="full-width"><img id="gift-image-preview" class="image-preview" hidden alt="Gift image preview" referrerpolicy="no-referrer"><small id="image-preview-message" role="status"></small></div>
+ <label for="gift-notes" class="full-width">Notes<textarea id="gift-notes" rows="4" maxlength="4000" placeholder="Size, colours, style, compatibility, or anything else that helps."></textarea><small id="error-notes" class="field-error"></small></label>
+ <div class="quantity-field"><label for="gift-quantity">Quantity wanted</label><div class="quantity-stepper"><button id="quantity-decrease" type="button" aria-label="Decrease quantity">−</button><input id="gift-quantity" type="number" min="1" max="100" step="1" required><button id="quantity-increase" type="button" aria-label="Increase quantity">＋</button></div><small id="error-quantity" class="field-error"></small></div>
+ <label for="gift-match">Product preference<select id="gift-match"><option value="exact">Exact item please</option><option value="similar">Similar is lovely</option></select><small id="error-match" class="field-error"></small></label>
+ <label for="gift-used">Condition preference<select id="gift-used"><option value="true">Gently used welcome</option><option value="false">New please</option></select><small id="error-used" class="field-error"></small></label>
+ </div>
+ <p id="gift-form-message" role="status" aria-live="polite"></p>
+ <div class="form-actions"><button id="save-gift" class="primary" type="submit">Save gift</button><button id="cancel-gift" type="button">Cancel</button><button id="archive-gift" class="danger-button" type="button" hidden>Archive gift</button></div>
+ <div id="archive-confirm" class="confirmation" hidden><p>Archive this gift? It will leave the active list. Existing selections are preserved.</p><button id="confirm-archive" type="button">Confirm archive</button><button id="cancel-archive" type="button">Keep gift</button></div>
+ </form>
+</dialog>
+<dialog id="archive-dialog" aria-labelledby="archive-title" class="editor-dialog">
+ <div class="dialog-heading"><h2 id="archive-title">Archived gifts</h2><button id="close-archive" type="button" aria-label="Close archived gifts">✕</button></div>
+ <p>Archived gifts keep their selections. Restore a gift to show it on the wishlist again.</p><p id="archive-message" role="status"></p><div id="archive-list"></div>
+</dialog>
+<dialog id="access-dialog" aria-labelledby="access-title" class="editor-dialog">
+ <div class="dialog-heading"><h2 id="access-title">Family access</h2><button id="close-access" type="button" aria-label="Close family access">✕</button></div>
+ <p>Save an email to allow sign-in. Saving never sends email. Use Send welcome email beside a saved account when you are ready. The welcome email has a permanent website link; recipients sign in when they visit.</p>
+ <form id="access-form"><label for="access-email">Email address<input id="access-email" type="email" required maxlength="254" autocomplete="off"></label><label for="access-role">Role<select id="access-role"><option value="viewer">Viewer</option><option value="editor">Editor</option></select></label><button id="allow-access" class="primary">Save account</button></form>
+ <p id="access-message" role="status" aria-live="polite"></p><div id="access-list"></div>
+</dialog>
+<dialog id="passkey-dialog" class="editor-dialog" aria-labelledby="passkey-title">
+<div class="dialog-heading"><h2 id="passkey-title">Your passkeys</h2><button id="close-passkeys" type="button" aria-label="Close passkeys">✕</button></div>
+<p>A passkey lets you sign in using your device or password manager. Email sign-in is always available as a fallback.</p>
+<div class="form-actions"><button id="passkey-create" type="button" class="primary">Create passkey</button><button id="passkey-refresh" type="button">Refresh</button></div>
+<p id="passkey-message" role="status" aria-live="polite"></p><div id="passkey-list"></div>
+</dialog><aside id="action-toast" class="action-toast" role="status" aria-live="polite" hidden><span id="action-toast-text"></span><button id="dismiss-toast" type="button" aria-label="Dismiss confirmation">✕</button></aside></body></html>
+

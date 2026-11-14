@@ -22,10 +22,12 @@ export async function handle(req){
   if(typeof body?.email!=='string'||body.email.length>254||!Number.isInteger(body.revision))return reply(400,'Choose a saved account and refresh before sending.');
   const username=Deno.env.get('WISHLIST_SMTP_USERNAME'),password=Deno.env.get('WISHLIST_SMTP_PASSWORD');
   if(!username||!password)return reply(503,'Welcome emails need the Gmail SMTP secrets configured in Supabase Edge Functions. No email was sent.');
-  const claim=await call('/rest/v1/rpc/wishlist_begin_invitation',{p_actor:user.id,p_email:body.email,p_revision:body.revision});
+  const token=Array.from(crypto.getRandomValues(new Uint8Array(32)),b=>b.toString(16).padStart(2,'0')).join('');
+  const hash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(token))),b=>b.toString(16).padStart(2,'0')).join('');
+  const claim=await call('/rest/v1/rpc/wishlist_begin_personal_welcome',{p_actor:user.id,p_email:body.email,p_revision:body.revision,p_token_hash:hash});
   if(!claim.ok){const error=await claim.json();return reply(error.code==='42501'?403:409,error.message||'Welcome email is not allowed.');}
   const target=await claim.json();attempt=target.attempt;
-  const email=welcomeEmail(target.first_name,target.contact_email);
+  const email=welcomeEmail(target.first_name,target.contact_email,origin+'/christmas-wishlist/welcome.html#'+token);
   transport=nodemailer.createTransport({host:'smtp.gmail.com',port:465,secure:true,auth:{user:username,pass:password},connectionTimeout:5000,greetingTimeout:5000,socketTimeout:10000,logger:false,debug:false});
   // Recipient, name, sender, subject and body come only from trusted server sources.
   // This is an ordinary welcome email: no Auth user creation or sign-in token.

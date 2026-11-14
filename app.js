@@ -3,6 +3,8 @@ const authFeedback=(text,isError=true)=>window.wishlistAuthFeedback?.(text,isErr
 const node = (tag, text, cls) => { const n=document.createElement(tag); if(text)n.textContent=text;if(cls)n.className=cls;return n; };
 const safeURL = value => {try{const u=new URL(value);return u.protocol==='https:'?u.href:null;}catch{return null;}};
 const adminPage=document.body.dataset.page==='administration';
+const welcomePage=document.body.dataset.page==='welcome';
+let suggestPasskey=false;
 let data={people:[],gifts:[]},config,person='all',busy=false,statuses=[],session=null,authorized=false,generation=0,refreshing=false,tokenRefreshPromise=null;
 let view='all',mySelections={gifts:[],units:[]};const actionMessages=new Map();
 let familyPhotoURL=null,photoLoading=false,photoVersion=0,photoRetryAt=0;
@@ -49,6 +51,7 @@ async function refresh(){
  if(!connected()||!session){lockWishlist();notice('Sign in to view our family wishlists. Access is limited to approved family email addresses.');render();return;}
  const version=generation;refreshing=true;statuses=[];render();
  try{
+  if(welcomePage){const next=await request('/rest/v1/rpc/get_wishlist_account',{});if(version!==generation||!session)return;data=next;authorized=true;return;}
   if(adminPage){const next=await request('/rest/v1/rpc/get_administration',{});if(version!==generation||!session)return;data=next;authorized=true;notice('Administration · Manage family accounts and invitations.');return;}
   const nextData=await request('/rest/v1/rpc/get_wishlist',{});
   const nextStatuses=await request('/rest/v1/rpc/list_gift_units',{});
@@ -66,6 +69,7 @@ function render(){
  window.wishlistAdmin?.sync(data,authorized);
  $('#logout').hidden=!session;$('#signin').hidden=!!session;$('#account-email').hidden=!session;
  $('#account-email').textContent=session?.user?.email||(session?'Account unavailable':'');$('#login').hidden=!!session;
+ if(welcomePage){window.wishlistWelcome?.sync({authorized,email:session?.user?.email||''});return;}
  if(adminPage){$('#welcome').hidden=authorized;return;}
  $('#wishlist').hidden=!authorized;$('#welcome').hidden=authorized;$('#gifts').replaceChildren();$('#people').replaceChildren();
  if(!authorized)return;
@@ -205,13 +209,15 @@ async function start(){try{
   window.addEventListener('beforeunload',e=>{if(ideaDirty){e.preventDefault();e.returnValue='';}});
  }
 
+ window.wishlistWelcome?.init({request,signOut,getGeneration:()=>generation});
  window.wishlistPasskeys?.init({request,acceptSession:acceptPasskeySession,notify:confirmAction,ready:connected,getGeneration:()=>generation});
  window.wishlistAdmin?.init({request,refresh,getGeneration:()=>generation});
  window.wishlistEditor?.init({request,refresh,notify:confirmAction,safeURL,getData:()=>data,getPerson:()=>person,getGeneration:()=>generation});
  if($('#family-photo'))$('#family-photo').onerror=()=>{clearFamilyPhoto();photoRetryAt=Date.now()+60000;};$('#logout').onclick=signOut;$('#dismiss-toast').onclick=()=>{$('#action-toast').hidden=true;};for(const name of ['all','mine'])if($('#view-'+name))$('#view-'+name).onclick=()=>{view=name;$('#filter').value='all';render();};render();
  const result=await fetch('config.json',{cache:'no-store'});if(!result.ok)throw Error('Unable to load connection settings');config=await result.json();
  if(config.supabaseUrl&&!/^https:\/\/[a-z0-9-]+\.supabase\.co$/.test(config.supabaseUrl))throw Error('Invalid backend URL');
- const hash=new URLSearchParams(location.hash.slice(1));if(hash.has('access_token')){saveSession({access_token:hash.get('access_token'),refresh_token:hash.get('refresh_token'),expires_at:Date.now()/1000+Number(hash.get('expires_in')||3600)});history.replaceState(null,'',location.pathname+location.search);}else if(hash.has('error_description')){authFeedback('Sign-in link failed: '+hash.get('error_description'));history.replaceState(null,'',location.pathname);}
+ if(welcomePage)await window.wishlistWelcome?.ready();
+ const hash=new URLSearchParams(location.hash.slice(1));if(hash.has('access_token')){suggestPasskey=true;saveSession({access_token:hash.get('access_token'),refresh_token:hash.get('refresh_token'),expires_at:Date.now()/1000+Number(hash.get('expires_in')||3600)});history.replaceState(null,'',location.pathname+location.search);}else if(hash.has('error_description')){authFeedback('Sign-in link failed: '+hash.get('error_description'));history.replaceState(null,'',location.pathname);}
  if($('#filter'))$('#filter').onchange=render;
  window.addEventListener('storage',event=>{if(event.key==='badillo-session'&&event.newValue===null){generation++;session=null;lockWishlist();notice('You’re signed out.');render();}});
  $('#login').onsubmit=async e=>{
@@ -219,14 +225,15 @@ async function start(){try{
  if(!connected()){authFeedback('Sign-in is unavailable because the connection settings have not loaded. Refresh and try again.');return;}
  const button=e.target.querySelector('button');button.disabled=true;button.textContent='Sending…';authFeedback('Sending your sign-in link…',false);
  try {
- await request('/auth/v1/otp?redirect_to='+encodeURIComponent(location.origin+location.pathname),{email:$('#email').value.trim()},false);
+ await request('/auth/v1/otp?redirect_to='+encodeURIComponent(location.origin+(welcomePage?'/christmas-wishlist/':location.pathname)),{email:$('#email').value.trim()},false);
  authFeedback('Email sent. Check your inbox for the sign-in link.',false);
  }catch(error){authFeedback('Could not send the sign-in link: '+error.message);}
  finally{button.disabled=false;button.textContent='Send sign-in link';}
  };
 
  if(session){const version=generation;try{const user=await request('/auth/v1/user',undefined,true,'GET');if(version===generation&&session)saveSession({...session,user:{email:user.email}});}catch(error){if(version===generation){saveSession(null);lockWishlist();authFeedback('Your sign-in could not be confirmed: '+error.message);}}}
- await refresh();setInterval(()=>{if(!document.hidden&&!busy&&session)refresh();},20000);
+ await refresh();if(authorized&&suggestPasskey&&!adminPage&&!welcomePage)window.wishlistPasskeys?.suggest(session?.user?.email);
+ setInterval(()=>{if(!document.hidden&&!busy&&session)refresh();},20000);
 
  }catch(e){notice('The wishlist could not load. Please refresh in a moment.');authFeedback('Sign-in could not initialize: '+e.message);}}
 start();

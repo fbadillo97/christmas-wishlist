@@ -50,3 +50,8 @@
 
 #idea-dialog textarea{width:100%;min-width:0;font:inherit;padding:10px;border:1px solid var(--line);border-radius:6px;background:white;color:var(--ink)}#idea-dialog textarea:focus-visible{outline:3px solid #c67634;outline-offset:3px}#idea-dialog p{overflow-wrap:anywhere}#idea-dialog .actions{padding-top:0}
 .toolbar{flex-wrap:wrap}.toolbar label{max-width:100%;min-width:0}.toolbar select{max-width:100%}
+
+.welcome-landing{max-width:620px;margin:40px auto;padding:32px;border:1px solid var(--line);border-radius:18px;background:#fffdf8}
+.welcome-landing h1{font:clamp(32px,7vw,48px)/1.15 Georgia,serif;margin:20px 0}.welcome-landing form{display:grid;gap:14px;margin:24px 0}.welcome-landing input{width:100%;min-width:0}.welcome-landing label{gap:6px;font-size:14px}.welcome-landing .field-hint{line-height:1.6}
+.passkey-nudge{border:1px solid var(--line);border-radius:14px;padding:22px;margin:24px 0;background:#edf0e7}.passkey-nudge h2{margin:0 0 12px}.passkey-nudge p{font-size:14px}
+@media(max-width:480px){.welcome-landing{padding:22px;margin:24px auto}.welcome-landing .primary{width:100%}}

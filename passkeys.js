@@ -1,12 +1,12 @@
 // Native WebAuthn adapter for Supabase Auth's two-step passkey endpoints.
 (() => {
  const $=s=>document.querySelector(s);
- let api,allowed=false,pending=false,operation=0,controller=null;
+ let api,allowed=false,pending=false,operation=0,controller=null,nudgeKey=null;
  const supported=()=>Boolean(window.isSecureContext&&window.PublicKeyCredential&&navigator.credentials?.create&&navigator.credentials?.get);
  const text=(value,error=false)=>{for(const id of ['#passkey-message','#passkey-signin-message']){const el=$(id);el.textContent=value;el.classList.toggle('error',error);}};
  function controls(){const available=supported();$('#passkey-signin').disabled=pending||!available;$('#passkey-create').disabled=pending||!available||!allowed;$('#passkey-refresh').disabled=pending||!allowed;}
  function cancel(){operation++;controller?.abort();controller=null;pending=false;controls();}
- function clear(){cancel();allowed=false;$('#passkey-list').replaceChildren();text('');const d=$('#passkey-dialog');if(d.open)d.close();controls();}
+ function clear(){nudgeKey=null;if($('#passkey-nudge'))$('#passkey-nudge').hidden=true;cancel();allowed=false;$('#passkey-list').replaceChildren();text('');const d=$('#passkey-dialog');if(d.open)d.close();controls();}
  function sync(isAuthorized){allowed=isAuthorized;$('#manage-passkeys').hidden=!allowed;controls();if(!supported())$('#passkey-signin-message').textContent='Passkeys are unavailable in this browser. You can still sign in by email.';}
  const decode=value=>{const raw=value.replace(/-/g,'+').replace(/_/g,'/');const binary=atob(raw+'='.repeat((4-raw.length%4)%4));return Uint8Array.from(binary,c=>c.charCodeAt(0)).buffer;};
  const encode=value=>{const bytes=new Uint8Array(value);let binary='';for(const byte of bytes)binary+=String.fromCharCode(byte);return btoa(binary).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/g,'');};
@@ -52,7 +52,7 @@
    if(!credential)throw Error('No passkey was returned by the device. Try again or use email.');
    const verified=await api.request('/auth/v1/passkeys/'+phase+'/verify',{challenge_id:options.challenge_id,credential:serialize(credential,registration)},registration);
    if(id!==operation||version!==api.getGeneration())return;
-   if(registration){text('Passkey created. Next time you can sign in with it.');pending=false;controls();await listKeys();text('Passkey created. Next time you can sign in with it.');}
+   if(registration){rememberNudge('done');if($('#passkey-nudge'))$('#passkey-nudge').hidden=true;text('Passkey created. Next time you can sign in with it.');pending=false;controls();await listKeys();text('Passkey created. Next time you can sign in with it.');}
    else{
     const accepted=await api.acceptSession(verified);
     if(id!==operation)return;
@@ -88,13 +88,33 @@
    text(keys.length?'Your passkeys are listed below.':'No passkeys yet. Choose Create passkey to add one.');
   }catch(error){if(id===operation&&version===api.getGeneration())text(reason(error),true);}
  }
+
+ function rememberNudge(value){if(nudgeKey){try{localStorage.setItem(nudgeKey,value);}catch{}}}
+ async function suggest(email){
+  if(!$('#passkey-nudge')||!allowed||!supported()||pending||!email)return;
+  const version=api.getGeneration(),id=operation;
+  try{
+   const bytes=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(email.toLowerCase()));
+   const key='badillo-passkey-offer-'+Array.from(new Uint8Array(bytes),b=>b.toString(16).padStart(2,'0')).join('');
+   if(version!==api.getGeneration()||id!==operation||!allowed)return;
+   nudgeKey=key;try{if(localStorage.getItem(key))return;}catch{}
+   const result=await api.request('/auth/v1/passkeys',undefined,true,'GET');
+   if(version!==api.getGeneration()||id!==operation||!allowed)return;
+   const keys=Array.isArray(result)?result:result?.passkeys;
+   if(!Array.isArray(keys)||keys.length)return;
+   $('#passkey-nudge').hidden=false;
+  }catch{/* Email sign-in works even when optional setup suggestions cannot load. */}
+ }
+
  function init(bridge){
-  api=bridge;$('#passkey-signin').onclick=()=>run(false);$('#passkey-create').onclick=()=>run(true);$('#passkey-refresh').onclick=listKeys;
+  api=bridge;
+  if($('#passkey-nudge-setup'))$('#passkey-nudge-setup').onclick=()=>{if(!allowed||pending)return;$('#passkey-dialog').showModal();run(true);};
+  if($('#passkey-nudge-later'))$('#passkey-nudge-later').onclick=()=>{rememberNudge('dismissed');$('#passkey-nudge').hidden=true;};$('#passkey-signin').onclick=()=>run(false);$('#passkey-create').onclick=()=>run(true);$('#passkey-refresh').onclick=listKeys;
   $('#manage-passkeys').onclick=()=>{if(!allowed)return;$('#passkey-dialog').showModal();listKeys();};
   $('#close-passkeys').onclick=()=>$('#passkey-dialog').close();
   $('#passkey-dialog').addEventListener('close',cancel);
   $('#signin-dialog').addEventListener('close',()=>{if(pending)cancel();});
   sync(false);
  }
- window.wishlistPasskeys={init,sync,clear};
+ window.wishlistPasskeys={init,sync,clear,suggest};
 })();
