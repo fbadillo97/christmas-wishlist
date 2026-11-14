@@ -4,20 +4,20 @@
  const allowed=()=>['owner','editor'].includes(role);
  const message=(text,error=false)=>{const el=$('#admin-message');el.textContent=text;el.classList.toggle('error',error);};
  function reset(){$('#account-editor').open=false;editing=null;dirty=false;$('#member-form').reset();$('#member-id').textContent='Assigned when saved';$('#member-email').readOnly=false;$('#member-form-title').textContent='Add account';$('#cancel-member').hidden=true;$('#member-active').checked=true;$('#member-role').value='viewer';$('#member-role').disabled=role!=='owner';$('#member-active').disabled=false;$('#owner-option').hidden=true;}
- function clear(){clearTracking();role=null;members=[];signature='';busy=false;reset();for(const id of ['member-name','member-last-name','member-email','save-member','cancel-member','refresh-members'])$('#'+id).disabled=false;$('#member-list').replaceChildren();$('#member-count').textContent='';$('#member-search').value='';$('#administration').hidden=true;message('');}
+ function clear(){clearTracking();window.wishlistRoadmap?.clear();$('#roadmap-link').hidden=true;role=null;members=[];signature='';busy=false;reset();for(const id of ['member-name','member-last-name','member-email','save-member','cancel-member','refresh-members'])$('#'+id).disabled=false;$('#member-list').replaceChildren();$('#member-count').textContent='';$('#member-search').value='';$('#administration').hidden=true;message('');}
  function sync(data,authorized){
   const nextRole=authorized?data.account?.role:null;
   if(!['owner','editor'].includes(nextRole)){clear();return;}
   const changed=role!==nextRole;role=nextRole;members=data.members||[];$('#administration').hidden=false;
   if(changed){reset();signature='';}
-  syncTracking(data);
+  syncTracking(data);syncRoadmap(data);
   const next=JSON.stringify(members);if(signature!==next){signature=next;render();}
  }
 
  function showSection(section){
-  activeSection=section==='tracking'&&role==='owner'?'tracking':'accounts';
-  $('#accounts').hidden=activeSection!=='accounts';$('#gift-tracking').hidden=activeSection!=='tracking'||role!=='owner';
-  $('#accounts-link').setAttribute('aria-pressed',activeSection==='accounts');$('#tracking-link').setAttribute('aria-pressed',activeSection==='tracking');
+  activeSection=section==='tracking'&&role==='owner'?'tracking':section==='roadmap'&&role==='owner'?'roadmap':'accounts';
+  $('#accounts').hidden=activeSection!=='accounts';$('#gift-tracking').hidden=activeSection!=='tracking'||role!=='owner';$('#platform-roadmap').hidden=activeSection!=='roadmap'||role!=='owner';
+  $('#accounts-link').setAttribute('aria-pressed',activeSection==='accounts');$('#tracking-link').setAttribute('aria-pressed',activeSection==='tracking');$('#roadmap-link').setAttribute('aria-pressed',activeSection==='roadmap');
  }
  function clearTracking(){
   tracking=[];trackingSignature='';$('#gift-tracking').hidden=true;$('#tracking-link').hidden=false;$('#tracking-link').disabled=true;$('#tracking-link').title='Reservation tracking is available to the owner account.';showSection('accounts');
@@ -38,6 +38,11 @@
   const recipients=new Map(),people=new Map();
   for(const row of tracking){recipients.set(row.recipient_id||'',row.recipient);people.set(row.selected_by_email||'',row.selected_by_name?row.selected_by_name+' · '+(row.selected_by_email||'Account unavailable'):row.selected_by_email||'Account unavailable');}
   updateChoices('tracking-recipient',recipients,'All recipients');updateChoices('tracking-person',people,'All people');renderTracking();
+ }
+ function syncRoadmap(data){
+  $('#roadmap-link').hidden=role!=='owner';
+  window.wishlistRoadmap?.sync(role==='owner'?(data.platform_roadmap||[]):[],role==='owner');
+  if(role!=='owner'&&activeSection==='roadmap')showSection('accounts');
  }
  function renderTracking(){
   const body=$('#tracking-rows');body.replaceChildren();if(role!=='owner')return;
@@ -101,7 +106,7 @@
   catch(error){if(version===api.getGeneration()&&allowed()){await reload();if(version===api.getGeneration()&&allowed())message(error.message,true);}}
   finally{if(version===api.getGeneration()&&allowed())pending(false);}
  }
- function init(bridge){api=bridge;$('#accounts-link').onclick=()=>showSection('accounts');$('#tracking-link').onclick=()=>showSection('tracking');for(const id of ['tracking-status','tracking-recipient','tracking-person'])$('#'+id).onchange=renderTracking;$('#refresh-tracking').onclick=reload;$('#member-form').onsubmit=save;$('#member-form').oninput=()=>{dirty=true;};$('#member-form').onchange=()=>{dirty=true;};$('#cancel-member').onclick=()=>{if(!busy){reset();message('');}};$('#member-search').oninput=render;$('#refresh-members').onclick=reload;window.addEventListener('beforeunload',event=>{if(dirty){event.preventDefault();event.returnValue='';}});}
+ function init(bridge){api=bridge;$('#accounts-link').onclick=()=>showSection('accounts');$('#tracking-link').onclick=()=>showSection('tracking');$('#roadmap-link').onclick=()=>showSection('roadmap');window.wishlistRoadmap?.init({request:api.request,refresh:api.refresh,getGeneration:api.getGeneration,getRole:()=>role});for(const id of ['tracking-status','tracking-recipient','tracking-person'])$('#'+id).onchange=renderTracking;$('#refresh-tracking').onclick=reload;$('#member-form').onsubmit=save;$('#member-form').oninput=()=>{dirty=true;};$('#member-form').onchange=()=>{dirty=true;};$('#cancel-member').onclick=()=>{if(!busy){reset();message('');}};$('#member-search').oninput=render;$('#refresh-members').onclick=reload;window.addEventListener('beforeunload',event=>{if(dirty){event.preventDefault();event.returnValue='';}});}
  window.wishlistAdmin={init,sync,clear};
 })();
 

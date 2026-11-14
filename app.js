@@ -211,7 +211,7 @@ async function start(){try{
 
  window.wishlistWelcome?.init({request,signOut,getGeneration:()=>generation});
  window.wishlistPasskeys?.init({request,acceptSession:acceptPasskeySession,notify:confirmAction,ready:connected,getGeneration:()=>generation});
- window.wishlistAdmin?.init({request,refresh,getGeneration:()=>generation});
+ window.wishlistAdmin?.init({request,refresh,getGeneration:()=>generation,getRole:()=>data.account?.role||null});
  window.wishlistEditor?.init({request,refresh,notify:confirmAction,safeURL,getData:()=>data,getPerson:()=>person,getGeneration:()=>generation});
  if($('#family-photo'))$('#family-photo').onerror=()=>{clearFamilyPhoto();photoRetryAt=Date.now()+60000;};$('#logout').onclick=signOut;$('#dismiss-toast').onclick=()=>{$('#action-toast').hidden=true;};for(const name of ['all','mine'])if($('#view-'+name))$('#view-'+name).onclick=()=>{view=name;$('#filter').value='all';render();};render();
  const result=await fetch('config.json',{cache:'no-store'});if(!result.ok)throw Error('Unable to load connection settings');config=await result.json();
