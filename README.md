@@ -156,3 +156,14 @@ After a fresh email sign-in and verified family access, the site checks the acco
 Deployment: `backend/personal-welcome.sql`, lookup function, static page/auth/passkey additions, then updated welcome sender and compatibility route. Shared Auth templates and expiry are unchanged. New general-idea/open-ended selection code from the parallel chat is preserved.
 
 Checks: database transaction tests passed for hashed lookup, minimal profile, invalid tokens, inactive account rejection, service-only RPC grants and private-table denial; fixtures rolled back. Browser checks passed at 390px and 1200px for prefilled email, no send on opening, one-click email request, matching/wrong sessions, invalid-link fallback, optional nudge/dismissal, mocked server-verified passkey setup, sign-out clearing, and coexistence with open-ended selection controls. Mail tests passed for token/hash pairing, trusted greeting/contact/CC, permanent personal links, authorization and send failures. Native device authentication was not automated and no family emails were sent.
+
+
+## Administration account details and section navigation
+
+Administration has separate **Users & invitations** and **Reservations & purchases** section buttons. Reservations remain owner-only; editors see a disabled button with an owner-access explanation. Owner refreshes preserve the selected section, and switching does not discard unsaved account edits. Existing `#gift-tracking` links open reservation tracking for the owner.
+
+The compact account table includes separate first/last names, a stable private account UUID, whether the shared Auth account has signed in (with last sign-in on hover), and whether it currently has registered passkeys/count. The ID is assigned when an allowlist entry is created, including before first sign-in; its short display copies the full UUID and is searchable. Imported last names are preserved and editable. These are login-account indicators, not proof of a particular wishlist visit. No credential material or sessions are returned.
+
+`backend/account-details.sql` adds the account UUID, extends the authorized member-list RPC with the safe status summary, and adds a new authorized `admin_save_account` wrapper for first/last name edits. The old save RPC remains compatible and preserves last names. Existing role, owner and revision protections remain in force. Saving still sends no email. Auth passkey registration and removal remain solely in each user's passkey settings.
+
+Checks: transactional tests covered last-name saves, stable/unique IDs, metadata shape, exact passkey counts against Auth, owner tracking still returned, editor permission limits, viewer denial and anonymous grants; fixtures rolled back. No real account names, permissions, reservations or passkeys were changed.
