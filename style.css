@@ -26,3 +26,17 @@
 .unit-list-scroll{max-block-size:8rem;min-block-size:0;overflow-y:auto;overflow-x:hidden;align-content:start;grid-auto-rows:max-content;flex-shrink:0;scrollbar-gutter:stable;padding:0 6px 6px 2px;scroll-padding-block:8px}
 .unit-list-scroll:focus-visible{outline:3px solid #c67634;outline-offset:3px;border-radius:4px}
 .content .unit-scroll-hint{font-size:12px;color:var(--muted);margin:0 0 8px}
+
+.button-link,.admin-section-link{display:inline-block;color:var(--ink);text-decoration:none;border:1px solid var(--line);border-radius:8px;background:white;padding:10px 16px;font-size:13px}
+.admin-main .admin-heading{padding:24px 0}.admin-heading h1{font:clamp(36px,7vw,56px)/1.1 Georgia,serif;margin:12px 0}.admin-heading p{color:var(--muted)}
+.admin-layout{display:grid;grid-template-columns:minmax(240px,1fr) minmax(0,2fr);gap:24px;align-items:start}
+.admin-panel{background:#fffdf8;border:1px solid var(--line);border-radius:14px;padding:22px;min-width:0}
+.admin-panel h3{margin-top:0}.admin-panel input,.admin-panel select{width:100%;min-width:0}
+#member-form{display:grid;gap:16px}#member-form label{font-size:14px;gap:5px}.field-hint{color:var(--muted);font-size:12px;margin:0}
+#member-form .checkbox-label{display:flex;align-items:center;gap:8px}#member-active{width:auto}#member-form .form-actions{margin-top:8px}
+.admin-list-heading{display:flex;align-items:center;justify-content:space-between;gap:12px}.admin-list-heading h3{margin:0}
+.admin-panel>label{display:grid;gap:6px;margin:16px 0;font-size:14px}
+.admin-member{border-top:1px solid var(--line);padding:18px 0;display:flex;align-items:start;justify-content:space-between;gap:16px;overflow-wrap:anywhere}
+.admin-member>div{min-width:0}.admin-member h3{margin:0;font-size:17px}.admin-member p{font-size:12px;color:var(--muted);margin:4px 0}.admin-member .member-email{font-size:14px;color:var(--ink)}
+.admin-member .management-controls{flex:0 0 145px}.admin-section-link{background:var(--ink);color:white}#admin-message{position:sticky;bottom:12px;background:var(--cream);padding:12px;border:1px solid var(--line);border-radius:8px}#admin-message:empty{display:none}
+@media(max-width:760px){.admin-layout{grid-template-columns:1fr}.admin-member{flex-direction:column}.admin-member .management-controls{flex:auto;justify-content:flex-start}.admin-panel{padding:18px}}

@@ -145,7 +145,7 @@
   $('#archive-gift').onclick=()=>{$('#archive-confirm').hidden=false;};$('#cancel-archive').onclick=()=>{$('#archive-confirm').hidden=true;};
   $('#confirm-archive').onclick=()=>{if(editing)archiveGift(editing,true);};
   $('#view-archive').onclick=()=>{open('#archive-dialog');loadArchive();};$('#close-archive').onclick=()=>close('#archive-dialog');
-  $('#family-access').onclick=()=>{open('#access-dialog');loadMembers();};$('#close-access').onclick=()=>close('#access-dialog');
+  $('#family-access').onclick=()=>{location.href='admin.html';};$('#close-access').onclick=()=>close('#access-dialog');
   $('#access-form').onsubmit=event=>{event.preventDefault();setMember({email:$('#access-email').value.trim()},role==='owner'?$('#access-role').value:'viewer',true);};
  }
  window.wishlistEditor={init,sync,clear,openGift};

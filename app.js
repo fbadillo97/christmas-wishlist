@@ -2,6 +2,7 @@ const $ = s => document.querySelector(s);
 const authFeedback=(text,isError=true)=>window.wishlistAuthFeedback?.(text,isError);
 const node = (tag, text, cls) => { const n=document.createElement(tag); if(text)n.textContent=text;if(cls)n.className=cls;return n; };
 const safeURL = value => {try{const u=new URL(value);return u.protocol==='https:'?u.href:null;}catch{return null;}};
+const adminPage=document.body.dataset.page==='administration';
 let data={people:[],gifts:[]},config,person='all',busy=false,statuses=[],session=null,authorized=false,generation=0,refreshing=false,tokenRefreshPromise=null;
 let view='all',mySelections={gifts:[],units:[]};const actionMessages=new Map();
 let familyPhotoURL=null,photoLoading=false,photoVersion=0,photoRetryAt=0;
@@ -21,12 +22,12 @@ async function request(path,body,authenticated=true,method='POST'){
 }
 function notice(text){$('#connection').textContent=text;}
 function confirmAction(text,isError=false){const toast=$('#action-toast');toast.hidden=false;toast.classList.toggle('error',isError);$('#action-toast-text').textContent=text;}
-function lockWishlist(cancelPasskeys=true){clearFamilyPhoto();if(cancelPasskeys)window.wishlistPasskeys?.clear();window.wishlistEditor?.clear();authorized=false;data={people:[],gifts:[]};statuses=[];person='all';view='all';mySelections={gifts:[],units:[]};actionMessages.clear();$('#action-toast').hidden=true;$('#action-toast-text').textContent='';}
+function lockWishlist(cancelPasskeys=true){clearFamilyPhoto();if(cancelPasskeys)window.wishlistPasskeys?.clear();window.wishlistEditor?.clear();window.wishlistAdmin?.clear();authorized=false;data={people:[],gifts:[]};statuses=[];person='all';view='all';mySelections={gifts:[],units:[]};actionMessages.clear();$('#action-toast').hidden=true;$('#action-toast-text').textContent='';}
 
 function clearFamilyPhoto(){
  photoVersion++;photoLoading=false;photoRetryAt=0;
  if(familyPhotoURL)URL.revokeObjectURL(familyPhotoURL);
- familyPhotoURL=null;$('#family-photo').removeAttribute('src');$('#family-photo-section').hidden=true;
+ familyPhotoURL=null;$('#family-photo')?.removeAttribute('src');if($('#family-photo-section'))$('#family-photo-section').hidden=true;
 }
 async function loadFamilyPhoto(){
  if(!authorized||!session||familyPhotoURL||photoLoading||Date.now()<photoRetryAt)return;
@@ -48,6 +49,7 @@ async function refresh(){
  if(!connected()||!session){lockWishlist();notice('Sign in to view our family wishlists. Access is limited to approved family email addresses.');render();return;}
  const version=generation;refreshing=true;statuses=[];render();
  try{
+  if(adminPage){const next=await request('/rest/v1/rpc/get_administration',{});if(version!==generation||!session)return;data=next;authorized=true;notice('Administration · Manage family accounts and invitations.');return;}
   const nextData=await request('/rest/v1/rpc/get_wishlist',{});
   const nextStatuses=await request('/rest/v1/rpc/list_gift_units',{});
   const nextSelections=await request('/rest/v1/rpc/get_my_selections',{});
@@ -61,8 +63,10 @@ async function refresh(){
 function render(){
  window.wishlistPasskeys?.sync(authorized);
  window.wishlistEditor?.sync(data,authorized);
+ window.wishlistAdmin?.sync(data,authorized);
  $('#logout').hidden=!session;$('#signin').hidden=!!session;$('#account-email').hidden=!session;
  $('#account-email').textContent=session?.user?.email||(session?'Account unavailable':'');$('#login').hidden=!!session;
+ if(adminPage){$('#welcome').hidden=authorized;return;}
  $('#wishlist').hidden=!authorized;$('#welcome').hidden=authorized;$('#gifts').replaceChildren();$('#people').replaceChildren();
  if(!authorized)return;
  for(const p of [{id:'all',name:'Everyone',symbol:'🎁'},...data.people]){
@@ -156,12 +160,14 @@ async function signOut(){
 }
 async function start(){try{
  window.wishlistPasskeys?.init({request,acceptSession:acceptPasskeySession,notify:confirmAction,ready:connected,getGeneration:()=>generation});
+ window.wishlistAdmin?.init({request,refresh,getGeneration:()=>generation});
  window.wishlistEditor?.init({request,refresh,notify:confirmAction,safeURL,getData:()=>data,getPerson:()=>person,getGeneration:()=>generation});
- $('#family-photo').onerror=()=>{clearFamilyPhoto();photoRetryAt=Date.now()+60000;};$('#logout').onclick=signOut;$('#dismiss-toast').onclick=()=>{$('#action-toast').hidden=true;};for(const name of ['all','mine'])$('#view-'+name).onclick=()=>{view=name;$('#filter').value='all';render();};render();
+ if($('#family-photo'))$('#family-photo').onerror=()=>{clearFamilyPhoto();photoRetryAt=Date.now()+60000;};$('#logout').onclick=signOut;$('#dismiss-toast').onclick=()=>{$('#action-toast').hidden=true;};for(const name of ['all','mine'])if($('#view-'+name))$('#view-'+name).onclick=()=>{view=name;$('#filter').value='all';render();};render();
  const result=await fetch('config.json',{cache:'no-store'});if(!result.ok)throw Error('Unable to load connection settings');config=await result.json();
  if(config.supabaseUrl&&!/^https:\/\/[a-z0-9-]+\.supabase\.co$/.test(config.supabaseUrl))throw Error('Invalid backend URL');
  const hash=new URLSearchParams(location.hash.slice(1));if(hash.has('access_token')){saveSession({access_token:hash.get('access_token'),refresh_token:hash.get('refresh_token'),expires_at:Date.now()/1000+Number(hash.get('expires_in')||3600)});history.replaceState(null,'',location.pathname+location.search);}else if(hash.has('error_description')){authFeedback('Sign-in link failed: '+hash.get('error_description'));history.replaceState(null,'',location.pathname);}
- $('#filter').onchange=render;
+ if($('#filter'))$('#filter').onchange=render;
+ window.addEventListener('storage',event=>{if(event.key==='badillo-session'&&event.newValue===null){generation++;session=null;lockWishlist();notice('You’re signed out.');render();}});
  $('#login').onsubmit=async e=>{
  e.preventDefault();
  if(!connected()){authFeedback('Sign-in is unavailable because the connection settings have not loaded. Refresh and try again.');return;}

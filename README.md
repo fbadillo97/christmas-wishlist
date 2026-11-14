@@ -102,3 +102,18 @@ A locked database claim and two-minute cooldown prevent parallel/repeated sends.
 Verification: run `node tests/invitations.mjs` for isolated handler checks with mocked email delivery. Deployment checks covered unauthenticated/invalid-token HTTP rejection and CORS; transactional database checks covered save without Auth creation, viewer/unlisted denial, inactive/stale targets, duplicate prevention, status updates and service-only RPC privileges. Test fixtures were rolled back. No real invitation was sent during deployment, so mailbox delivery and the authenticated visual flow still need a manual check. Existing gift selection routines are unchanged.
 
 Rollback: restore the previous frontend files and disable the Edge Function. The additive invitation columns can remain; existing account-saving RPCs work independently. Do not automatically replay pending/uncertain sends.
+
+
+## Administration and account names
+
+Open **Administration** from the wishlist header, or visit `admin.html`. The page reuses the wishlist's email/passkey session and requires verified active editor/owner authorization from the database. It fetches account administration data only, rather than the gift catalog. Navigation back to the wishlist is always available.
+
+Accounts have an optional private `first_name` (maximum 80 characters). Existing names start blank; none are inferred from email addresses, Auth metadata, or gift recipients. Add accounts, edit names, change permitted roles and access, search by name/email, and send/resend invitations from this page. Saved account emails remain fixed identities: add the new email and remove the old account's access when an address changes. Gift selections remain preserved.
+
+Editors manage viewer accounts only. Only the owner manages editors or updates the owner's name. Owner role/access cannot be removed or changed. Name updates use the same revision protection as account permissions. Saving never invokes Auth, creates Auth users, or sends email. The previous account-saving RPC remains compatible and preserves the new name field.
+
+The new SQL is `backend/administration.sql`; deploy it before the page and updated JavaScript. Public RPC wrappers use security invoker; private authorized routines use fixed search paths and explicitly restricted grants. Direct private-table access remains revoked. Account names are not stored in the public repository, browser local storage, or user-editable Auth metadata.
+
+The personalized welcome email is still a design draft. Adding a first name does **not** alter the current Supabase email template or sender; existing send/resend actions continue to use the previously deployed invitation service.
+
+Verification: transactional database tests passed for owner/editor/viewer/unlisted/anonymous authorization, owner protection, name updates, stale-edit rejection and saves without Auth/email side effects; all fixtures and temporary owner-name changes were rolled back. DOM checks passed for signed-out startup, authorized account-only loading, preserving unsaved drafts during refresh, and immediately clearing private names/lists on cross-tab sign-out. Mobile layout stacks the account editor and saved-account list below 760px. Gift claim routines are unchanged. No real invitation email was sent during testing.
