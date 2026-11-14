@@ -101,6 +101,12 @@ function render(){
   const counts={available:0,reserved:0,purchased:0};units.forEach(u=>{if(u.status in counts)counts[u.status]++;});
   content.append(node('p',view==='mine'?units.length+' selected by you · '+counts.reserved+' reserved · '+counts.purchased+' purchased':units.length===quantity?quantity+' wanted · '+counts.available+' available'+(counts.reserved?' · '+counts.reserved+' reserved':'')+(counts.purchased?' · '+counts.purchased+' purchased':''):quantity+' wanted · Checking availability…','quantity-summary'));
   const selections=node('div',null,'unit-list');
+  if(quantity>1){
+   selections.classList.add('unit-list-scroll');
+   selections.tabIndex=0;selections.setAttribute('role','region');
+   selections.setAttribute('aria-label','Individual items for '+g.title);
+   content.append(node('p','Scroll to see each item and its actions.','unit-scroll-hint'));
+  }
   for(let number=1;number<=quantity;number++){
    const state=units.find(u=>u.unit_no===number);if(view==='mine'&&!state)continue;const row=node('div',null,'unit-row');
    const status=state?(state.status[0].toUpperCase()+state.status.slice(1))+(state.mine?' by you':''):'Availability unavailable';
