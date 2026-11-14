@@ -3,8 +3,8 @@
  let api,role=null,members=[],editing=null,busy=false,signature='',dirty=false,tracking=[],trackingSignature='';
  const allowed=()=>['owner','editor'].includes(role);
  const message=(text,error=false)=>{const el=$('#admin-message');el.textContent=text;el.classList.toggle('error',error);};
- function reset(){editing=null;dirty=false;$('#member-form').reset();$('#member-email').readOnly=false;$('#member-form-title').textContent='Add account';$('#cancel-member').hidden=true;$('#member-active').checked=true;$('#member-role').value='viewer';$('#member-role').disabled=role!=='owner';$('#member-active').disabled=false;$('#owner-option').hidden=true;}
- function clear(){clearTracking();role=null;members=[];signature='';busy=false;reset();for(const id of ['member-name','member-email','save-member','cancel-member','refresh-members'])$('#'+id).disabled=false;$('#member-list').replaceChildren();$('#member-search').value='';$('#administration').hidden=true;message('');}
+ function reset(){$('#account-editor').open=false;editing=null;dirty=false;$('#member-form').reset();$('#member-email').readOnly=false;$('#member-form-title').textContent='Add account';$('#cancel-member').hidden=true;$('#member-active').checked=true;$('#member-role').value='viewer';$('#member-role').disabled=role!=='owner';$('#member-active').disabled=false;$('#owner-option').hidden=true;}
+ function clear(){clearTracking();role=null;members=[];signature='';busy=false;reset();for(const id of ['member-name','member-email','save-member','cancel-member','refresh-members'])$('#'+id).disabled=false;$('#member-list').replaceChildren();$('#member-count').textContent='';$('#member-search').value='';$('#administration').hidden=true;message('');}
  function sync(data,authorized){
   const nextRole=authorized?data.account?.role:null;
   if(!['owner','editor'].includes(nextRole)){clear();return;}
@@ -54,21 +54,25 @@
 
  function edit(member){
   if(busy)return;if(dirty&&!window.confirm('Discard your unsaved account changes?'))return;
-  editing={...member};dirty=false;$('#member-form-title').textContent='Edit account';$('#member-name').value=member.first_name||'';$('#member-email').value=member.email;$('#member-email').readOnly=true;
+  $('#account-editor').open=true;editing={...member};dirty=false;$('#member-form-title').textContent='Edit account';$('#member-name').value=member.first_name||'';$('#member-email').value=member.email;$('#member-email').readOnly=true;
   $('#owner-option').hidden=member.role!=='owner';$('#member-role').value=member.role;$('#member-role').disabled=role!=='owner'||member.role==='owner';$('#member-active').checked=member.active;$('#member-active').disabled=member.role==='owner';$('#cancel-member').hidden=false;message('');$('#member-name').focus();
  }
  function render(){
   const list=$('#member-list');list.replaceChildren();const query=$('#member-search').value.trim().toLowerCase();
-  for(const member of members.filter(m=>(m.email+' '+(m.first_name||'')).toLowerCase().includes(query))){
-   const row=make('article',null,'admin-member'),info=make('div');info.append(make('h3',member.first_name||'Name not set'),make('p',member.email,'member-email'),make('p',(member.role==='owner'?'Owner':member.role==='editor'?'Editor':'Viewer')+' · '+(member.active?'Access allowed':'Access removed')));
-   const states={not_sent:'No invitation recorded',sending:'Sending…',sent:'Email accepted by email service',failed:'Last send failed',unknown:'Delivery uncertain — check before resending'};
-   info.append(make('p',states[member.invitation_status]||states.not_sent));if(member.invitation_sent_at)info.append(make('p','Last sent '+new Date(member.invitation_sent_at).toLocaleString()));
-   const controls=make('div',null,'management-controls');const editable=role==='owner'||member.role==='viewer';
-   if(editable){const button=make('button','Edit account');button.type='button';button.disabled=busy;button.onclick=()=>edit(member);controls.append(button);}
-   if(editable&&member.role!=='owner'&&member.active){const invite=make('button',member.invitation_attempted_at?'Resend welcome email':'Send welcome email');invite.type='button';invite.disabled=busy;invite.onclick=()=>send(member);controls.append(invite);}
-   row.append(info,controls);list.append(row);
+  const filtered=members.filter(m=>(m.email+' '+(m.first_name||'')).toLowerCase().includes(query));
+  $('#member-count').textContent=filtered.length+' / '+members.length+' accounts';
+  const states={not_sent:['Not sent','No welcome email recorded'],sending:['Sending…','Send in progress'],sent:['Sent','Accepted by the email service; inbox delivery is not confirmed'],failed:['Failed','Last send failed'],unknown:['Uncertain','Check with the recipient before resending']};
+  for(const member of filtered){
+   const row=make('tr'),name=make('td',member.first_name||'—'),email=make('td',member.email,'account-email-cell');
+   const status=states[member.invitation_status]||states.not_sent,invitation=make('td'),badge=make('span',status[0],'admin-status status-'+(member.invitation_status||'not_sent'));badge.title=status[1];invitation.append(badge);
+   const access=make('td'),accessBadge=make('span',member.active?'Active':'Removed','admin-status '+(member.active?'access-active':'access-removed'));access.append(accessBadge);
+   const when=make('td','—','account-date-cell');if(member.invitation_sent_at){const date=new Date(member.invitation_sent_at);when.textContent=date.toLocaleDateString(undefined,{month:'short',day:'numeric'})+' '+date.toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'});when.title=date.toLocaleString();}
+   const actions=make('td'),controls=make('div',null,'account-row-actions'),editable=role==='owner'||member.role==='viewer';
+   if(editable){const button=make('button','Edit');button.type='button';button.disabled=busy;button.setAttribute('aria-label','Edit account '+member.email);button.onclick=()=>edit(member);controls.append(button);}
+   if(editable&&member.role!=='owner'&&member.active){const invite=make('button',member.invitation_attempted_at?'Resend welcome':'Send welcome');invite.type='button';invite.disabled=busy;invite.setAttribute('aria-label',invite.textContent+' email to '+member.email);invite.onclick=()=>send(member);controls.append(invite);}
+   actions.append(controls);row.append(name,email,make('td',member.role==='owner'?'Owner':member.role==='editor'?'Editor':'Viewer'),access,invitation,when,actions);list.append(row);
   }
-  if(!list.children.length)list.append(make('p','No accounts match your search.'));
+  if(!filtered.length){const row=make('tr'),cell=make('td','No accounts match your search.');cell.colSpan=7;row.append(cell);list.append(row);}
  }
  function pending(value){busy=value;for(const id of ['member-name','member-email','save-member','cancel-member','refresh-members'])$('#'+id).disabled=value;$('#member-role').disabled=value||role!=='owner'||editing?.role==='owner';$('#member-active').disabled=value||editing?.role==='owner';render();}
  async function reload(){await api.refresh();}
