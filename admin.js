@@ -1,17 +1,57 @@
 (() => {
  const $=s=>document.querySelector(s),make=(tag,text,cls)=>{const el=document.createElement(tag);if(text)el.textContent=text;if(cls)el.className=cls;return el;};
- let api,role=null,members=[],editing=null,busy=false,signature='',dirty=false;
+ let api,role=null,members=[],editing=null,busy=false,signature='',dirty=false,tracking=[],trackingSignature='';
  const allowed=()=>['owner','editor'].includes(role);
  const message=(text,error=false)=>{const el=$('#admin-message');el.textContent=text;el.classList.toggle('error',error);};
  function reset(){editing=null;dirty=false;$('#member-form').reset();$('#member-email').readOnly=false;$('#member-form-title').textContent='Add account';$('#cancel-member').hidden=true;$('#member-active').checked=true;$('#member-role').value='viewer';$('#member-role').disabled=role!=='owner';$('#member-active').disabled=false;$('#owner-option').hidden=true;}
- function clear(){role=null;members=[];signature='';busy=false;reset();for(const id of ['member-name','member-email','save-member','cancel-member','refresh-members'])$('#'+id).disabled=false;$('#member-list').replaceChildren();$('#member-search').value='';$('#administration').hidden=true;message('');}
+ function clear(){clearTracking();role=null;members=[];signature='';busy=false;reset();for(const id of ['member-name','member-email','save-member','cancel-member','refresh-members'])$('#'+id).disabled=false;$('#member-list').replaceChildren();$('#member-search').value='';$('#administration').hidden=true;message('');}
  function sync(data,authorized){
   const nextRole=authorized?data.account?.role:null;
   if(!['owner','editor'].includes(nextRole)){clear();return;}
   const changed=role!==nextRole;role=nextRole;members=data.members||[];$('#administration').hidden=false;
   if(changed){reset();signature='';}
+  syncTracking(data);
   const next=JSON.stringify(members);if(signature!==next){signature=next;render();}
  }
+
+ function clearTracking(){
+  tracking=[];trackingSignature='';$('#gift-tracking').hidden=true;$('#tracking-link').hidden=true;
+  $('#tracking-rows').replaceChildren();$('#tracking-summary').textContent='';
+  $('#tracking-status').value='all';
+  for(const id of ['tracking-recipient','tracking-person']){$('#'+id).replaceChildren();const option=make('option','All');option.value='all';$('#'+id).append(option);}
+ }
+ function updateChoices(id,choices,label){
+  const select=$('#'+id),previous=select.value;select.replaceChildren();
+  const all=make('option',label);all.value='all';select.append(all);
+  for(const [key,name] of choices){const option=make('option',name);option.value=key;select.append(option);}
+  select.value=choices.has(previous)?previous:'all';
+ }
+ function syncTracking(data){
+  if(role!=='owner'){clearTracking();return;}
+  $('#gift-tracking').hidden=false;$('#tracking-link').hidden=false;tracking=data.gift_tracking||[];
+  const next=JSON.stringify(tracking);if(next===trackingSignature)return;trackingSignature=next;
+  const recipients=new Map(),people=new Map();
+  for(const row of tracking){recipients.set(row.recipient_id||'',row.recipient);people.set(row.selected_by_email||'',row.selected_by_name?row.selected_by_name+' · '+(row.selected_by_email||'Account unavailable'):row.selected_by_email||'Account unavailable');}
+  updateChoices('tracking-recipient',recipients,'All recipients');updateChoices('tracking-person',people,'All people');renderTracking();
+ }
+ function renderTracking(){
+  const body=$('#tracking-rows');body.replaceChildren();if(role!=='owner')return;
+  const status=$('#tracking-status').value,recipient=$('#tracking-recipient').value,person=$('#tracking-person').value;
+  const rows=tracking.filter(r=>(status==='all'||r.status===status)&&(recipient==='all'||(r.recipient_id||'')===recipient)&&(person==='all'||(r.selected_by_email||'')===person));
+  const reserved=rows.filter(r=>r.status==='reserved').length;
+  $('#tracking-summary').textContent=rows.length+' selected item'+(rows.length===1?'':'s')+' · '+reserved+' reserved · '+(rows.length-reserved)+' purchased';
+  for(const row of rows){
+   const tr=make('tr');
+   const title=make('td',row.title||'Untitled gift');if(row.archived)title.append(make('span','Archived','tracking-archived'));
+   const who=make('td',row.selected_by_name||row.selected_by_email||'Account unavailable');
+   if(row.selected_by_name&&row.selected_by_email)who.append(make('small',row.selected_by_email));
+   const when=make('td');
+   if(row.updated_at){const time=make('time',new Date(row.updated_at).toLocaleString());time.dateTime=row.updated_at;when.append(time);}else when.textContent='Not recorded';
+   tr.append(title,make('td',row.recipient),make('td',String(row.unit_no)),make('td',row.status==='reserved'?'Reserved':'Purchased'),who,when);body.append(tr);
+  }
+  if(!rows.length){const tr=make('tr'),td=make('td',tracking.length?'No selections match these filters.':'No reserved or purchased gifts yet.');td.colSpan=6;tr.append(td);body.append(tr);}
+ }
+
  function edit(member){
   if(busy)return;if(dirty&&!window.confirm('Discard your unsaved account changes?'))return;
   editing={...member};dirty=false;$('#member-form-title').textContent='Edit account';$('#member-name').value=member.first_name||'';$('#member-email').value=member.email;$('#member-email').readOnly=true;
@@ -49,6 +89,6 @@
   catch(error){if(version===api.getGeneration()&&allowed()){await reload();if(version===api.getGeneration()&&allowed())message(error.message,true);}}
   finally{if(version===api.getGeneration()&&allowed())pending(false);}
  }
- function init(bridge){api=bridge;$('#member-form').onsubmit=save;$('#member-form').oninput=()=>{dirty=true;};$('#member-form').onchange=()=>{dirty=true;};$('#cancel-member').onclick=()=>{if(!busy){reset();message('');}};$('#member-search').oninput=render;$('#refresh-members').onclick=reload;window.addEventListener('beforeunload',event=>{if(dirty){event.preventDefault();event.returnValue='';}});}
+ function init(bridge){api=bridge;for(const id of ['tracking-status','tracking-recipient','tracking-person'])$('#'+id).onchange=renderTracking;$('#refresh-tracking').onclick=reload;$('#member-form').onsubmit=save;$('#member-form').oninput=()=>{dirty=true;};$('#member-form').onchange=()=>{dirty=true;};$('#cancel-member').onclick=()=>{if(!busy){reset();message('');}};$('#member-search').oninput=render;$('#refresh-members').onclick=reload;window.addEventListener('beforeunload',event=>{if(dirty){event.preventDefault();event.returnValue='';}});}
  window.wishlistAdmin={init,sync,clear};
 })();
