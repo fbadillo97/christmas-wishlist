@@ -90,18 +90,22 @@
   for(const member of members){
    const row=make('div',null,'management-row'),info=make('div');
    info.append(make('strong',member.email),make('p',(member.role==='owner'?'Owner · Editor':member.role==='editor'?'Editor':'Viewer')+' · '+(member.active?'Access allowed':'Access removed')));
+   const states={not_sent:'No invitation recorded',sending:'Sending…',sent:'Email accepted by email service',failed:'Last send failed',unknown:'Delivery uncertain — check before resending'};
+   info.append(make('p',(states[member.invitation_status]||'No invitation recorded')+(member.invitation_sent_at?' · Last sent '+new Date(member.invitation_sent_at).toLocaleString():'')+(member.has_signed_in?' · Has signed in':'')));
    row.append(info);
    const allowed=member.role!=='owner'&&(role==='owner'||member.role==='viewer');
    if(allowed){
     const controls=make('div',null,'management-controls');let select;
     if(role==='owner'){
-     select=make('select');select.setAttribute('aria-label','Role for '+member.email);
+     select=make('select');select.disabled=busy;select.setAttribute('aria-label','Role for '+member.email);
      for(const r of ['viewer','editor']){const option=make('option',r==='editor'?'Editor':'Viewer');option.value=r;select.append(option);}select.value=member.role;
-     const saveRole=make('button','Save role');saveRole.type='button';saveRole.onclick=()=>setMember(member,select.value,member.active);controls.append(select,saveRole);
+     const saveRole=make('button','Save role');saveRole.type='button';saveRole.disabled=busy;saveRole.onclick=()=>setMember(member,select.value,member.active);controls.append(select,saveRole);
     }
-    const toggle=make('button',member.active?'Remove access':'Restore access');toggle.type='button';
+    const toggle=make('button',member.active?'Remove access':'Restore access');toggle.type='button';toggle.disabled=busy;
     toggle.onclick=()=>{if(member.active&&!window.confirm('Remove wishlist access for '+member.email+'? Existing gift selections will be preserved.'))return;setMember(member,member.role,!member.active);};
-    controls.append(toggle);row.append(controls);
+    controls.append(toggle);
+    if(member.active){const invite=make('button',member.invitation_attempted_at?'Resend invitation':'Send invitation');invite.type='button';invite.disabled=busy;invite.onclick=()=>sendInvitation(member);controls.append(invite);}
+    row.append(controls);
    }
    $('#access-list').append(row);
   }
@@ -111,13 +115,23 @@
   try{const result=await api.request('/rest/v1/rpc/editor_list_members',{});if(version!==api.getGeneration()||!canEdit())return;members=result;renderMembers();message('#access-message','',false);}
   catch(error){if(version===api.getGeneration())message('#access-message',error.message);}
  }
+ async function sendInvitation(member){
+  if(!canEdit()||busy)return;
+  if(!window.confirm('Send a wishlist welcome/sign-in email to '+member.email+' now?'))return;
+  const version=api.getGeneration();busy=true;$('#allow-access').disabled=true;renderMembers();message('#access-message','Sending invitation…',false);
+  try{const result=await api.request('/functions/v1/wishlist-invite',{email:member.email,revision:member.revision});
+   if(version!==api.getGeneration()||!canEdit())return;
+   await loadMembers();if(version===api.getGeneration()&&canEdit())message('#access-message',result.message,false);
+  }catch(error){if(version===api.getGeneration()&&canEdit()){await loadMembers();if(version===api.getGeneration()&&canEdit())message('#access-message',error.message);}}
+  finally{if(version===api.getGeneration()&&canEdit()){busy=false;$('#allow-access').disabled=false;renderMembers();}}
+ }
  async function setMember(member,nextRole,active){
-  if(!canEdit()||busy)return;const version=api.getGeneration();busy=true;$('#allow-access').disabled=true;
+  if(!canEdit()||busy)return;const version=api.getGeneration();busy=true;$('#allow-access').disabled=true;renderMembers();
   message('#access-message','Saving…',false);
   try{await api.request('/rest/v1/rpc/editor_set_member',{p_email:member.email,p_role:nextRole,p_active:active,p_revision:member.revision??null});
-   if(version!==api.getGeneration()||!canEdit())return;$('#access-email').value='';await loadMembers();message('#access-message','Access updated. No invitation email was sent.',false);
+   if(version!==api.getGeneration()||!canEdit())return;$('#access-email').value='';await loadMembers();if(version===api.getGeneration()&&canEdit())message('#access-message','Account saved. No invitation email was sent.',false);
   }catch(error){if(version===api.getGeneration())message('#access-message',error.message);}
-  finally{if(version===api.getGeneration()){busy=false;$('#allow-access').disabled=false;}}
+  finally{if(version===api.getGeneration()){busy=false;$('#allow-access').disabled=false;if(canEdit())renderMembers();}}
  }
  function init(bridge){
   api=bridge;
