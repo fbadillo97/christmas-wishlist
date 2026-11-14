@@ -167,3 +167,16 @@ The compact account table includes separate first/last names, a stable private a
 `backend/account-details.sql` adds the account UUID, extends the authorized member-list RPC with the safe status summary, and adds a new authorized `admin_save_account` wrapper for first/last name edits. The old save RPC remains compatible and preserves last names. Existing role, owner and revision protections remain in force. Saving still sends no email. Auth passkey registration and removal remain solely in each user's passkey settings.
 
 Checks: transactional tests covered last-name saves, stable/unique IDs, metadata shape, exact passkey counts against Auth, owner tracking still returned, editor permission limits, viewer denial and anonymous grants; fixtures rolled back. No real account names, permissions, reservations or passkeys were changed.
+
+
+## Owner-only Platform Roadmap
+
+Administration includes a Platform Roadmap for planning future platform work. It supports searchable/filterable records, independent priority and phase, complexity, effort estimates, dependencies, parent initiatives, technical notes, decisions, open questions, Markdown links, implementation references, completed history, archive/reopen handling and a Quick Wins filter. The detail panel includes **Copy context for ChatGPT**, which copies the selected feature metadata, decisions, open questions, specification URL and recent change history for a new planning conversation.
+
+Roadmap rows and their audit history live in the private `wishlist_private` schema. RLS is enabled, direct access is revoked and explicitly denied, and read/write RPCs verify the active owner role. Editors and viewers do not receive roadmap data. No future gift-discovery, family-suggestion, profile, Secret Santa or White Elephant functionality is implemented by this tracker.
+
+Specifications and planning rules are in [`docs/platform-roadmap/`](docs/platform-roadmap/README.md). The initial backlog contains ten proposal records; planning estimates are assumptions. White Elephant requirements include hybrid host/player/TV flows and a proposed classification for rules that are safe to change during play, require host confirmation and state validation, or should lock after play begins. Detailed gameplay rules remain open.
+
+The schema and seed script is [`backend/platform-roadmap.sql`](backend/platform-roadmap.sql); explicit direct-denial policies are in [`backend/platform-roadmap-access.sql`](backend/platform-roadmap-access.sql). The live Supabase project already has both migrations applied. For a fresh project, apply the schema/seed migration first, then the access-policy migration. Do not run the seed script twice. No emails or invitations are part of these changes.
+
+Run `tests/platform-roadmap.sql` against a configured test project as a privileged SQL role. It verifies the ten seeded rows, owner-only reads, role restrictions, status/completion/archive transitions and audit history in a rollback-only transaction. It requires an active owner account in the test project and creates no lasting records.
