@@ -31,16 +31,17 @@
   $('#gift-form').reset();$('#archive-confirm').hidden=true;matchTouched=Boolean(editing);
   $('#gift-person').replaceChildren();
   for(const p of data.people){const option=make('option',p.name);option.value=p.id;$('#gift-person').append(option);}
-  const g=editing||{person:api.getPerson()==='all'?data.people[0]?.id:api.getPerson(),kind:'product',quantity:1,match:'exact',used:true};
-  for(const name of ['person','kind','title','url','image','notes','quantity','match','used']){
+  const g=editing||{person:api.getPerson()==='all'?data.people[0]?.id:api.getPerson(),kind:'product',reservation_mode:'limited',quantity:1,match:'exact',used:true};
+  for(const name of ['person','kind','title','url','image','notes','quantity','match','used','reservation_mode']){
    $('#gift-'+name).value=typeof g[name]==='boolean'?String(g[name]):g[name]??'';fieldError(name,'');
   }
   $('#gift-dialog-title').textContent=editing?'Edit gift':'Add gift';$('#archive-gift').hidden=!editing;
-  message('#gift-form-message','',false);preview();open('#gift-dialog');$('#gift-title').focus();
+  syncMode();message('#gift-form-message','',false);preview();open('#gift-dialog');$('#gift-title').focus();
  }
  function payload(){
-  const p={};for(const name of ['person','kind','title','url','image','notes','quantity','match','used'])p[name]=$('#gift-'+name).value.trim();
+  const p={};for(const name of ['person','kind','title','url','image','notes','quantity','match','used','reservation_mode'])p[name]=$('#gift-'+name).value.trim();
   const errors={};
+  if(!['limited','open-ended','inspiration-only'].includes(p.reservation_mode))errors.reservation_mode='Choose a selection mode.';
   if(!p.person)errors.person='Choose a recipient.';
   if(!['product','idea'].includes(p.kind))errors.kind='Choose an entry type.';
   if(!p.title||p.title.length>160)errors.title='Enter a title of up to 160 characters.';
@@ -53,9 +54,10 @@
   if(Object.keys(errors).length){$('#gift-'+Object.keys(errors)[0]).focus();return null;}
   p.quantity=Number(p.quantity);p.used=p.used==='true';return p;
  }
+ function syncMode(){const limited=$('#gift-reservation_mode').value==='limited';$('#quantity-field').hidden=!limited;}
  function giftBusy(value){
   busy=value;for(const id of ['#save-gift','#cancel-gift','#close-gift','#archive-gift','#confirm-archive','#cancel-archive'])$(id).disabled=value;
-  for(const name of ['person','kind','title','url','image','notes','quantity','match','used'])$('#gift-'+name).disabled=value;$('#quantity-decrease').disabled=value;$('#quantity-increase').disabled=value;
+  for(const name of ['person','kind','title','url','image','notes','quantity','match','used','reservation_mode'])$('#gift-'+name).disabled=value;$('#quantity-decrease').disabled=value;$('#quantity-increase').disabled=value;
   $('#save-gift').textContent=value?'Saving…':'Save gift';
  }
  async function save(event){
@@ -139,7 +141,8 @@
   $('#add-gift').onclick=()=>openGift();$('#gift-form').onsubmit=save;
   $('#close-gift').onclick=$('#cancel-gift').onclick=()=>{if(!busy)close('#gift-dialog');};
   $('#gift-dialog').addEventListener('cancel',event=>{if(busy)event.preventDefault();});
-  $('#gift-kind').onchange=()=>{if(!editing&&!matchTouched)$('#gift-match').value=$('#gift-kind').value==='idea'?'similar':'exact';};
+  $('#gift-reservation_mode').onchange=syncMode;
+  $('#gift-kind').onchange=()=>{if(!editing){$('#gift-reservation_mode').value=$('#gift-kind').value==='idea'?'open-ended':'limited';syncMode();}if(!editing&&!matchTouched)$('#gift-match').value=$('#gift-kind').value==='idea'?'similar':'exact';};
   $('#gift-match').onchange=()=>{matchTouched=true;};$('#gift-image').onchange=preview;
   $('#gift-image-preview').onerror=()=>{$('#gift-image-preview').hidden=true;$('#image-preview-message').textContent='Image could not load. You can still save the gift.';};
   $('#archive-gift').onclick=()=>{$('#archive-confirm').hidden=false;};$('#cancel-archive').onclick=()=>{$('#archive-confirm').hidden=true;};
@@ -150,3 +153,4 @@
  }
  window.wishlistEditor={init,sync,clear,openGift};
 })();
+

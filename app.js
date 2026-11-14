@@ -22,7 +22,7 @@ async function request(path,body,authenticated=true,method='POST'){
 }
 function notice(text){$('#connection').textContent=text;}
 function confirmAction(text,isError=false){const toast=$('#action-toast');toast.hidden=false;toast.classList.toggle('error',isError);$('#action-toast-text').textContent=text;}
-function lockWishlist(cancelPasskeys=true){clearFamilyPhoto();if(cancelPasskeys)window.wishlistPasskeys?.clear();window.wishlistEditor?.clear();window.wishlistAdmin?.clear();authorized=false;data={people:[],gifts:[]};statuses=[];person='all';view='all';mySelections={gifts:[],units:[]};actionMessages.clear();$('#action-toast').hidden=true;$('#action-toast-text').textContent='';}
+function lockWishlist(cancelPasskeys=true){clearIdea();clearFamilyPhoto();if(cancelPasskeys)window.wishlistPasskeys?.clear();window.wishlistEditor?.clear();window.wishlistAdmin?.clear();authorized=false;data={people:[],gifts:[]};statuses=[];person='all';view='all';mySelections={gifts:[],units:[]};actionMessages.clear();$('#action-toast').hidden=true;$('#action-toast-text').textContent='';}
 
 function clearFamilyPhoto(){
  photoVersion++;photoLoading=false;photoRetryAt=0;
@@ -56,7 +56,7 @@ async function refresh(){
   if(version!==generation||!session)return;
   data=nextData;statuses=nextStatuses;mySelections=nextSelections;authorized=true;loadFamilyPhoto();
   if(person!=='all'&&!data.people.some(p=>p.id===person))person='all';
-  notice('Family wishlists · Reserve a gift before shopping to avoid duplicates.');
+  notice('Family wishlists · Reserve specific products, or privately track something inspired by a general idea.');
  }catch(error){if(version===generation){lockWishlist();notice('Unable to open the private wishlists: '+error.message);}}
  finally{refreshing=false;if(version===generation)render();}
 }
@@ -78,7 +78,7 @@ function render(){
  $('#list-title').textContent=view==='mine'?'My selections':(person==='all'?'Everyone':data.people.find(p=>p.id===person).name)+'’s wishlist';
  const filter=$('#filter').value;
  const source=view==='mine'?mySelections.gifts:data.gifts,viewUnits=view==='mine'?mySelections.units:statuses;
- const gifts=source.filter(g=>person==='all'||g.person===person).filter(g=>filter==='all'||viewUnits.some(s=>s.gift_id===g.id&&s.status===filter));
+ const gifts=source.filter(g=>person==='all'||g.person===person).filter(g=>filter==='all'||(g.reservation_mode!=='limited'&&filter==='available'&&!g.archived)||viewUnits.some(s=>s.gift_id===g.id&&s.status===filter));
  if(!gifts.length){
   const empty=node('div',null,'empty');
   empty.append(node('div','✧'),node('h3',view==='mine'?'No selections in this view':data.gifts.length?'No gifts in this view':'Good things are on their way.'),node('p',view==='mine'?'Your reserved and purchased gifts appear here. Try Everyone’s wishlist to choose a gift, or change the filters.':data.gifts.length?'Try another person or availability filter.':'We’re gathering gift ideas. Check back soon.'),node('p','No gifts are expected. Your company is the best present.'));
@@ -101,6 +101,23 @@ function render(){
   if(g.notes){content.append(node('b','Notes','notes-label'),node('p',g.notes,'gift-notes'));}
   if(safeURL(g.url)){
    const link=node('a','View gift ↗','product');link.href=safeURL(g.url);link.target='_blank';link.rel='noopener noreferrer';content.append(link);
+  }
+  if(g.reservation_mode&&g.reservation_mode!=='limited'){
+   content.append(node('p',g.reservation_mode==='inspiration-only'?'Inspiration only · No selections needed.':'Open to everyone · Your selection never limits anyone else.','quantity-summary'));
+   if(g.reservation_mode==='open-ended'){
+    const state=mySelections.units.find(u=>u.gift_id===g.id&&u.unit_no===0);
+    content.append(node('p',state?(state.status==='purchased'?'You purchased something.':"You’re getting something."):'Choose something inspired by this idea.'));
+    const actions=node('div',null,'actions');
+    if(!g.archived){const track=node('button',state?'Edit my private selection':"I’m getting something");track.disabled=busy||refreshing;track.onclick=()=>openIdea(g,state);actions.append(track);}
+    if(state){
+     if(state.private_note){content.append(node('b','Your private note'),node('p',state.private_note,'gift-notes'));}
+     if(!g.archived&&state.status!=='purchased'){const buy=node('button','Mark purchased');buy.disabled=busy||refreshing;buy.onclick=()=>changeIdea(g.id,'purchased',state.private_note);actions.append(buy);}
+     const undo=node('button','Undo my selection');undo.disabled=busy||refreshing;undo.onclick=()=>changeIdea(g.id,'available','');actions.append(undo);
+    }
+    content.append(actions);
+   }
+   if(!g.archived&&['editor','owner'].includes(data.account?.role)){const edit=node('button','Edit gift','edit-gift');edit.onclick=()=>window.wishlistEditor.openGift(g.id);content.append(edit);}
+   card.append(art,content);$('#gifts').append(card);continue;
   }
   const counts={available:0,reserved:0,purchased:0};units.forEach(u=>{if(u.status in counts)counts[u.status]++;});
   content.append(node('p',view==='mine'?units.length+' selected by you · '+counts.reserved+' reserved · '+counts.purchased+' purchased':units.length===quantity?quantity+' wanted · '+counts.available+' available'+(counts.reserved?' · '+counts.reserved+' reserved':'')+(counts.purchased?' · '+counts.purchased+' purchased':''):quantity+' wanted · Checking availability…','quantity-summary'));
@@ -127,6 +144,27 @@ function render(){
   content.append(selections);if(!g.archived&&['editor','owner'].includes(data.account?.role)){const edit=node('button','Edit gift','edit-gift');edit.type='button';edit.onclick=()=>window.wishlistEditor.openGift(g.id);content.append(edit);}card.append(art,content);$('#gifts').append(card);
  }
 }
+
+let ideaEditing=null,ideaDirty=false;
+function clearIdea(){ideaEditing=null;ideaDirty=false;const d=$('#idea-dialog');if(d?.open)d.close();$('#idea-note')?.value!==undefined&&($('#idea-note').value='');if($('#idea-message'))$('#idea-message').textContent='';if($('#idea-title'))$('#idea-title').textContent='';}
+function openIdea(g,state){
+ ideaEditing={id:g.id,status:state?.status||'reserved'};ideaDirty=false;
+ $('#idea-title').textContent=g.title;$('#idea-note').value=state?.private_note||'';$('#idea-message').textContent='';$('#idea-save').disabled=false;
+ $('#idea-dialog').showModal();$('#idea-note').focus();
+}
+async function changeIdea(id,status,note){
+ if(!authorized||busy||refreshing)return false;
+ const version=generation;busy=true;render();let saved=false;
+ try{
+  await request('/rest/v1/rpc/set_idea_selection',{p_gift_id:id,p_status:status,p_private_note:note||''});
+  if(version!==generation)return false;
+  saved=true;clearIdea();await refresh();
+  if(version===generation&&authorized)confirmAction(status==='available'?'Your selection was undone.':status==='purchased'?'Marked as purchased. This idea stays open to everyone.':'Your private selection was saved. This idea stays open to everyone.');
+ }catch(error){if(version===generation){await refresh();if(version===generation&&authorized){confirmAction('Selection not saved: '+error.message,true);$('#idea-message').textContent=error.message;}}}
+ finally{busy=false;if(version===generation)render();}
+ return saved;
+}
+
 async function change(id,unitNo,status){
  if(!authorized||busy||refreshing)return;
  const version=generation,key=id+':'+unitNo;busy=true;actionMessages.set(key,{text:'Saving…'});render();
@@ -159,6 +197,14 @@ async function signOut(){
  if(token&&connected()){try{await fetch(config.supabaseUrl+'/auth/v1/logout',{method:'POST',headers:{apikey:config.publishableKey,Authorization:'Bearer '+token}});}catch{authFeedback('Signed out on this device. The server could not be reached to revoke the session.');}}
 }
 async function start(){try{
+ if($('#idea-dialog')){
+  $('#idea-note').oninput=()=>{ideaDirty=true;};
+  $('#idea-cancel').onclick=()=>{if(!busy)clearIdea();};
+  $('#idea-dialog').addEventListener('cancel',e=>{if(busy)e.preventDefault();else clearIdea();});
+  $('#idea-form').onsubmit=async e=>{e.preventDefault();if(!ideaEditing||busy)return;$('#idea-save').disabled=true;await changeIdea(ideaEditing.id,ideaEditing.status,$('#idea-note').value);if(ideaEditing)$('#idea-save').disabled=false;};
+  window.addEventListener('beforeunload',e=>{if(ideaDirty){e.preventDefault();e.returnValue='';}});
+ }
+
  window.wishlistPasskeys?.init({request,acceptSession:acceptPasskeySession,notify:confirmAction,ready:connected,getGeneration:()=>generation});
  window.wishlistAdmin?.init({request,refresh,getGeneration:()=>generation});
  window.wishlistEditor?.init({request,refresh,notify:confirmAction,safeURL,getData:()=>data,getPerson:()=>person,getGeneration:()=>generation});
@@ -184,3 +230,4 @@ async function start(){try{
 
  }catch(e){notice('The wishlist could not load. Please refresh in a moment.');authFeedback('Sign-in could not initialize: '+e.message);}}
 start();
+

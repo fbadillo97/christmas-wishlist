@@ -47,7 +47,7 @@
    if(row.selected_by_name&&row.selected_by_email)who.append(make('small',row.selected_by_email));
    const when=make('td');
    if(row.updated_at){const time=make('time',new Date(row.updated_at).toLocaleString());time.dateTime=row.updated_at;when.append(time);}else when.textContent='Not recorded';
-   tr.append(title,make('td',row.recipient),make('td',String(row.unit_no)),make('td',row.status==='reserved'?'Reserved':'Purchased'),who,when);body.append(tr);
+   tr.append(title,make('td',row.recipient),make('td',row.reservation_mode==='open-ended'?'—':String(row.unit_no)),make('td',row.status==='reserved'?(row.reservation_mode==='open-ended'?"Getting something":'Reserved'):'Purchased'),who,when);body.append(tr);
   }
   if(!rows.length){const tr=make('tr'),td=make('td',tracking.length?'No selections match these filters.':'No reserved or purchased gifts yet.');td.colSpan=6;tr.append(td);body.append(tr);}
  }
@@ -92,3 +92,4 @@
  function init(bridge){api=bridge;for(const id of ['tracking-status','tracking-recipient','tracking-person'])$('#'+id).onchange=renderTracking;$('#refresh-tracking').onclick=reload;$('#member-form').onsubmit=save;$('#member-form').oninput=()=>{dirty=true;};$('#member-form').onchange=()=>{dirty=true;};$('#cancel-member').onclick=()=>{if(!busy){reset();message('');}};$('#member-search').oninput=render;$('#refresh-members').onclick=reload;window.addEventListener('beforeunload',event=>{if(dirty){event.preventDefault();event.returnValue='';}});}
  window.wishlistAdmin={init,sync,clear};
 })();
+
