@@ -51,6 +51,7 @@ revoke all on function wishlist_private.platform_roadmap_touch() from public,ano
 create trigger platform_roadmap_touch before update on wishlist_private.platform_roadmap_features
 for each row execute function wishlist_private.platform_roadmap_touch();
 
+
 create function wishlist_private.get_platform_roadmap() returns jsonb
 language plpgsql security definer set search_path='' as $$
 begin
