@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' blob:; connect-src 'none'; base-uri 'none'; object-src 'none'; form-action 'none'">
+  <meta name="theme-color" content="#183d32">
+  <title>White Elephant · Demo</title>
+  <link rel="stylesheet" href="white-elephant.css">
+  <script src="white-elephant.js" defer></script>
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="./" aria-label="Badillo Family wishlist home"><span class="brand-mark" aria-hidden="true">✳</span><span>BADILLO FAMILY</span></a>
+    <div class="header-meta">
+      <span class="season">CHRISTMAS · 2026</span>
+      <a class="back-link" href="./">Back to wishlist</a>
+    </div>
+  </header>
+
+  <main class="page">
+    <section class="intro" aria-labelledby="page-title">
+      <div>
+        <p class="eyebrow">A LITTLE FRIENDLY CHAOS</p>
+        <h1 id="page-title">The gift exchange<span class="title-period">.</span></h1>
+        <p class="intro-copy">A shared screen for the room. Simple controls for the hosts.</p>
+      </div>
+      <div class="prototype-badge" role="note">
+        <span class="demo-dot" aria-hidden="true"></span>
+        <span><strong>Prototype</strong><small>Fake data · no account · no backend</small></span>
+      </div>
+    </section>
+
+    <div class="prototype-note" role="status">
+      <span aria-hidden="true">✦</span>
+      <p><strong>Visual prototype only.</strong> Host and TV preview modes do not sync. Nothing is saved or sent anywhere.</p>
+    </div>
+
+    <nav class="view-switch" aria-label="Prototype view">
+      <a id="host-view-link" class="view-option" href="?view=host" aria-current="page"><span class="view-icon" aria-hidden="true">▤</span> Host controls</a>
+      <a id="tv-view-link" class="view-option" href="?view=tv"><span class="view-icon" aria-hidden="true">▣</span> TV display</a>
+      <span class="view-hint">Preview each screen size</span>
+    </nav>
+
+    <section class="game-layout" aria-label="White Elephant game preview">
+      <div class="board-wrap">
+        <section class="game-board" aria-labelledby="board-heading">
+          <header class="board-top">
+            <div>
+              <p class="board-kicker"><span class="live-indicator" aria-hidden="true"></span> LIVE GAME <span class="separator">·</span> DEMO</p>
+              <h2 id="board-heading">The exchange is underway</h2>
+            </div>
+            <div class="turn-pill"><span>TURN</span><strong id="turn-number">03</strong><span class="turn-total">OF 18</span></div>
+          </header>
+
+          <div class="spotlight" id="spotlight">
+            <div class="spotlight-label"><span class="sparkle" aria-hidden="true">✦</span> UP NEXT</div>
+            <div class="player-token" id="player-token" aria-hidden="true">P3</div>
+            <div class="spotlight-copy">
+              <p class="reveal-caption" id="reveal-caption">The next person to play</p>
+              <h3 id="current-player">Player 03</h3>
+              <p id="current-action">Choose a wrapped gift or steal an eligible one.</p>
+            </div>
+            <div class="spotlight-decoration" aria-hidden="true">✧</div>
+          </div>
+
+          <div class="board-section-heading">
+            <div><p class="eyebrow">WHAT'S IN PLAY</p><h3>Opened gifts <span id="gift-count" class="count-chip">5</span></h3></div>
+            <p class="board-hint">A quick look at gifts<br class="desktop-break"> and their owners</p>
+          </div>
+
+          <div class="gift-grid" id="gift-grid" aria-live="polite"></div>
+
+          <footer class="board-footer">
+            <div class="wrapped-count"><span class="wrapped-icon" aria-hidden="true">🎁</span><span><strong id="wrapped-number">13 gifts</strong><small>still wrapped in the pile</small></span></div>
+            <div class="board-status"><span class="status-check" aria-hidden="true">✓</span> Game state is current</div>
+          </footer>
+        </section>
+
+        <section class="awards-preview" id="awards-preview" hidden aria-live="polite">
+          <div class="award-ribbon" aria-hidden="true">✦</div>
+          <p class="eyebrow">A VERY IMPORTANT CEREMONY</p>
+          <h2>And the awards go to…</h2>
+          <div class="award-list">
+            <div><span class="award-emoji" aria-hidden="true">🏆</span><span><small>MOST WANTED GIFT</small><strong>Gift 02 · The mystery box</strong></span></div>
+            <div><span class="award-emoji" aria-hidden="true">🕵️</span><span><small>BIGGEST GIFT THIEF</small><strong>Player 07</strong></span></div>
+            <div><span class="award-emoji" aria-hidden="true">🧤</span><span><small>MOST ROBBED</small><strong>Player 03</strong></span></div>
+          </div>
+          <button class="subtle-button" id="back-to-board" type="button">Back to game board</button>
+        </section>
+      </div>
+
+      <aside class="host-panel" id="host-panel" aria-labelledby="host-heading">
+        <div class="host-panel-heading">
+          <div class="host-icon" aria-hidden="true">✳</div>
+          <div><p class="eyebrow">FOR THE HOSTS</p><h2 id="host-heading">Game controls</h2></div>
+        </div>
+
+        <div class="connection-card">
+          <span class="connection-check" aria-hidden="true">✓</span>
+          <span><strong>Connected</strong><small>Demo state in this browser</small></span>
+          <span class="connection-tag">MOCK</span>
+        </div>
+
+        <div class="control-group">
+          <p class="control-label">THE NEXT TURN</p>
+          <button class="control-button primary-control" id="reveal-player" type="button"><span class="button-symbol" aria-hidden="true">✦</span><span><strong>Reveal next player</strong><small>Turn reveal is kept secret until tapped</small></span><span class="button-arrow" aria-hidden="true">→</span></button>
+        </div>
+
+        <div class="control-group">
+          <p class="control-label">A LITTLE DRAMA</p>
+          <button class="control-button" id="show-steal" type="button"><span class="control-emoji" aria-hidden="true">🎁</span><span><strong>Preview a steal moment</strong><small>Visual effect only · no game change</small></span><span class="button-arrow" aria-hidden="true">→</span></button>
+          <button class="control-button" id="start-countdown" type="button"><span class="control-emoji" aria-hidden="true">⏱️</span><span><strong id="countdown-label">Start playful countdown</strong><small id="countdown-help">No penalty when time runs out</small></span><span class="button-arrow" aria-hidden="true">→</span></button>
+        </div>
+
+        <div class="control-group">
+          <p class="control-label">GIFT PHOTO</p>
+          <label class="control-button photo-button" for="gift-photo"><span class="control-emoji" aria-hidden="true">📷</span><span><strong>Preview a gift photo</strong><small>Temporary preview · never uploaded</small></span><span class="button-arrow" aria-hidden="true">＋</span></label>
+          <input id="gift-photo" class="visually-hidden" type="file" accept="image/*" capture="environment">
+          <p class="photo-message" id="photo-message" role="status"></p>
+        </div>
+
+        <div class="host-tools">
+          <button class="text-button" id="show-awards" type="button">Preview end-of-game awards <span aria-hidden="true">↗</span></button>
+          <button class="text-button reset-button" id="reset-demo" type="button">Reset demo</button>
+        </div>
+
+        <div class="host-footnote"><span aria-hidden="true">☼</span> The hosts keep the game moving. The screen is here to help everyone follow along.</div>
+      </aside>
+    </section>
+
+    <section class="moment-overlay" id="moment-overlay" hidden role="dialog" aria-modal="true" aria-labelledby="moment-title">
+      <div class="moment-card">
+        <div class="moment-spark" aria-hidden="true">✦</div>
+        <p class="eyebrow" id="moment-kicker">A GIFT CHANGED HANDS</p>
+        <div class="moment-emoji" id="moment-emoji" aria-hidden="true">🎁</div>
+        <h2 id="moment-title">A bold move!</h2>
+        <p class="moment-detail" id="moment-detail">Player 07 took the mystery gift from Player 02.</p>
+        <button class="moment-close" id="close-moment" type="button">Back to the board</button>
+      </div>
+    </section>
+
+    <p class="page-footer"><span>✳</span> A family game-night experiment <span class="footer-divider">·</span> Nothing here is connected to the wishlist.</p>
+  </main>
+</body>
+</html>
