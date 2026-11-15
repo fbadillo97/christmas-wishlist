@@ -169,13 +169,19 @@ The compact account table includes separate first/last names, a stable private a
 Checks: transactional tests covered last-name saves, stable/unique IDs, metadata shape, exact passkey counts against Auth, owner tracking still returned, editor permission limits, viewer denial and anonymous grants; fixtures rolled back. No real account names, permissions, reservations or passkeys were changed.
 
 
+## White Elephant visual prototype
+
+[`white-elephant.html`](white-elephant.html) is a standalone mock-only design preview and is not linked from wishlist navigation. It uses fabricated names and gifts in memory only. It makes no Supabase or other network requests, saves nothing to local or session storage, and does not send or upload the selected photo. The temporary photo preview uses a browser object URL that is cleared on reset or when the page is left. Host and TV modes are separate visual views and do not synchronize.
+
+The prototype has no login, server authorization, or rules engine. Never use it for real participants or gifts. Keep the mock-only notice and restrictive `connect-src 'none'` policy until real backend and security work is implemented and reviewed.
+
 ## Owner-only Platform Roadmap
 
 Administration includes a Platform Roadmap for planning future platform work. It supports searchable/filterable records, independent priority and phase, complexity, effort estimates, dependencies, parent initiatives, technical notes, decisions, open questions, Markdown links, implementation references, completed history, archive/reopen handling and a Quick Wins filter. Completion requires deployment and verification evidence, saved separately from implementation notes. The detail panel includes **Copy context for ChatGPT**, which copies the selected feature metadata, decisions, open questions, specification URL and recent change history for a new planning conversation.
 
 Roadmap rows and their audit history live in the private `wishlist_private` schema. RLS is enabled, direct access is revoked and explicitly denied, and read/write RPCs verify the active owner role. Editors and viewers do not receive roadmap data. No future gift-discovery, family-suggestion, profile, Secret Santa or White Elephant functionality is implemented by this tracker.
 
-Specifications and planning rules are in [`docs/platform-roadmap/`](docs/platform-roadmap/README.md). The initial backlog contains ten proposal records; planning estimates are assumptions. White Elephant requirements include hybrid host/player/TV flows and a proposed classification for rules that are safe to change during play, require host confirmation and state validation, or should lock after play begins. Detailed gameplay rules remain open.
+Specifications and planning rules are in [`docs/platform-roadmap/`](docs/platform-roadmap/README.md). The initial backlog contains ten proposal records; planning estimates are assumptions. White Elephant requirements now describe host-operated V1 play with a read-only TV display and a separate setup flow. Rule-change safety classifications are still planned, and exact gameplay rules remain open.
 
 The schema and seed script is [`backend/platform-roadmap.sql`](backend/platform-roadmap.sql); explicit direct-denial policies are in [`backend/platform-roadmap-access.sql`](backend/platform-roadmap-access.sql), and the verified completion action is in [`backend/platform-roadmap-verification.sql`](backend/platform-roadmap-verification.sql). The live Supabase project has these migrations applied. For a fresh project, apply the schema/seed migration first, then the access-policy migration, then the verification migration. Do not run the seed script twice. No emails or invitations are part of these changes.
 
