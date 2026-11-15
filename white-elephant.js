@@ -22,20 +22,26 @@
   let lastFocusedElement = null;
   const params = new URLSearchParams(window.location.search);
   const view = params.get("view") === "tv" ? "tv" : "host";
+  const layout = view === "tv" && params.get("layout") === "split" ? "split" : "stacked";
   document.body.dataset.view = view;
+  document.body.dataset.layout = layout;
 
   const byId = (id) => document.getElementById(id);
   const giftGrid = byId("gift-grid");
   const overlay = byId("moment-overlay");
   const hostLink = byId("host-view-link");
   const tvLink = byId("tv-view-link");
+  const tvSplitLink = byId("tv-split-link");
 
-  if (view === "tv") {
-    tvLink.setAttribute("aria-current", "page");
-    hostLink.removeAttribute("aria-current");
-  } else {
+  hostLink.removeAttribute("aria-current");
+  tvLink.removeAttribute("aria-current");
+  tvSplitLink.removeAttribute("aria-current");
+  if (view === "host") {
     hostLink.setAttribute("aria-current", "page");
-    tvLink.removeAttribute("aria-current");
+  } else if (layout === "split") {
+    tvSplitLink.setAttribute("aria-current", "page");
+  } else {
+    tvLink.setAttribute("aria-current", "page");
   }
 
   function renderGifts() {
