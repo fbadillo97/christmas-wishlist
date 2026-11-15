@@ -1,76 +1,83 @@
 # White Elephant — Event Setup
 
 - **Feature ID:** `white-elephant-setup`
-- **State:** Proposed idea; not implemented.
+- **State:** V1 setup scope agreed at a high level; specification updated; implementation not started.
 - **Initial planning:** Phase 3 · Medium priority · Medium complexity (assumptions).
 - **Related specifications:** [Interactive Game](white-elephant-game.md) and [feature group overview](white-elephant.md).
 
 ## 1. Feature overview
 
-Set up a family White Elephant exchange before the event. This is the organizer workflow and configuration record; live turn logic belongs to the separate Interactive Game feature.
+Provide the small amount of setup needed to run a family White Elephant game. A host creates the event, enters the participant roster, reviews configurable house rules, and starts play. Live turns and gift ownership belong to the separate Interactive Game feature.
 
-## 2. Problem being solved
+This is a game-day tool, not an invitation or event-planning system in V1.
 
-Organizers need a clear place to record participants, budget, date, gifts expectation and house rules so guests know what to expect before the party begins.
+## 2. Goals and boundaries
 
-## 3. Goals and non-goals
+- **Goals:** create and resume an event, enter participants, choose supported rules, review the setup, and start the game.
+- **Out of scope for V1:** family invitations, QR guest registration, player accounts, player phones, budgets, calendar scheduling, and reusable annual templates.
+- Participants are entered by a host and do not need accounts or devices.
+- Authorized family accounts may act as hosts. Multiple hosts have the same game-control permissions.
 
-- **Goals:** create and edit an event, manage participants, configure and preview rules, and prepare a lobby for game day.
-- **Non-goals:** implement live turns, gift ownership or real-time game controls as part of event setup alone.
+## 3. V1 setup flow
 
-## 4. Proposed user experience
+1. An approved host opens the separate White Elephant page and creates a game.
+2. The host enters participant names and checks for duplicate or missing names.
+3. The host chooses a supported rule preset and adjusts the available settings.
+4. The page summarizes turn, steal, lock, and first-player rules in plain language.
+5. The host starts the game. The server records the randomized turn order but the TV reveals players one at a time.
+6. Refreshing or reopening the game returns to its saved state. It must not silently create a replacement game.
 
-An approved organizer creates an event and chooses whether participants are family accounts, guests joining via an event link/QR code, or both. The organizer enters the event date, optional budget guidance, participant roster, and rules. A preview explains the rules in plain language before the organizer opens the lobby.
+The initial participant count should be configurable within a documented implementation limit. The current family use case is about 18 participants; do not hard-code exactly 18.
 
-## 5. Functional requirements
+## 4. Functional requirements
 
-- Create, edit, cancel and archive an event while preserving an audit history.
-- Invite or approve participants; provide QR and short-code joining if guest support is selected.
-- Randomize turn order or allow the host to define it, then preview and lock the order before play.
-- Configure the candidate rules documented in the Interactive Game specification.
-- Validate settings together and explain incompatible combinations before an event begins.
-- Save a versioned ruleset with the event and show participants the current summary.
+- Create, start, pause, resume, complete, and reopen the current event state as permitted by its status.
+- Add, edit, reorder, and remove roster entries before play. After play begins, protect roster changes from silently invalidating the turn order or recorded actions.
+- Validate participant names and clearly identify duplicates before the game starts.
+- Configure only rules with implemented server-side validation.
+- Show an understandable rules summary before start.
+- Randomize the hidden turn order once when the game starts. Do not reveal future participants.
+- Keep enough event metadata to distinguish a current game from a completed one; retention and archive policy remain open.
+- Record host actions and consequential rule changes in the game history.
 
-## 6. Administration requirements
+## 5. Administration and permissions
 
-The event organizer needs controls for event visibility, participant approval, rules, lobby state and initial turn order. A family owner may need to transfer or recover event ownership. Permissions and transfer behavior are open questions.
+The existing wishlist Administration page manages wishlist accounts and platform planning. Game setup belongs in the White Elephant host console, not as new controls mixed into account administration.
 
-## 7. Technical considerations
+- Host actions require an authenticated, active, verified family account.
+- All authorized hosts share game-control permissions in V1.
+- Participants are roster entries, not authenticated application users.
+- The TV display is read-only and uses a scoped event pairing flow.
+- The server, not the browser, decides whether an account can create or control an event.
 
-Use separate event/game records rather than storing game configuration on gift wishlist records. Keep setup screens distinct from the live TV display and player controls. QR codes should encode only a scoped, revocable join link. A short-lived token should be used for paired displays and guest admission.
+## 6. Technical and data considerations
 
-## 8. Data and security considerations
+- Host the page in the existing wishlist GitHub Pages site, using isolated game files and relative paths.
+- Store events and game data in a separate private Supabase schema/tables from wishlist items and claims.
+- Protect exposed RPC wrappers with verified family authorization and enforce RLS/restricted grants on underlying tables.
+- Never place real participant lists, gifts, photos, credentials, or seed data in Git.
+- No service key or host credential may be sent to the TV display.
+- Event pairing must be scoped, read-only, revocable, and expire according to the retention decision.
+- Keep demo data in memory only; demo mode must not call the backend.
 
-An event is family data. Server-side authorization must distinguish organizer, host, participant and read-only display. Avoid permanent guest accounts unless later approved. Define expiration, roster privacy and event-history retention before implementation. Never expose a service key to the static client.
+## 7. Open questions before implementation
 
-## 9. Dependencies
+- Exact participant-name limits, supported maximum count, and whether a participant can appear in multiple games.
+- Whether host-defined turn order is needed in addition to randomized order. Current V1 direction is randomized and hidden.
+- Whether a roster may be edited after the game starts, and what host correction flow applies.
+- Whether completed games can be reopened, and when events, action history, and gift photos are deleted.
+- How TV pairing is issued and revoked.
+- How a completed game is archived without leaking private family data.
 
-The event/occasion data model (`multiple-occasions`) may be a prerequisite. The Interactive Game feature (`white-elephant-game`) consumes the event and its locked configuration.
+## 8. Decisions made
 
-## 10. Open questions
+- **Agreed:** the game should be a separate page within the wishlist site.
+- **Agreed:** players do not need accounts or phones.
+- **Agreed:** multiple authorized hosts may operate the game.
+- **Agreed:** the TV provides a shared, read-only display.
+- **Agreed:** the roster and rules are controlled by the host.
+- **Deferred:** invitations, guest join links/QR codes, and permanent player profiles.
 
-- May any guest join by QR, or must the host approve every name?
-- Can a participant be removed after the draw or after the game begins?
-- Can guests see the full roster before joining?
-- Should budget guidance be required, optional or omitted?
-- Can an event be copied for a later year?
-- Which host privileges can be transferred if the organizer is unavailable?
+## 9. Implementation history
 
-## 11. Decisions made
-
-- **Agreed:** White Elephant belongs on the long-term platform roadmap.
-- **Proposed:** setup and live gameplay are separate roadmap entries.
-- **Deferred:** joining policy, event retention, roster controls and final rules.
-
-## 12. Potential future enhancements
-
-Reusable rule presets, invitations, calendar reminders and annual event templates.
-
-## 13. Acceptance criteria
-
-An organizer can create an event, configure and review its rules, manage participants, and prepare a lobby. Permissions are enforced in Supabase, join access is revocable, and no live gameplay begins without an explicit host action.
-
-## 14. Implementation history
-
-None. Planning record only.
-
+Planning decisions were consolidated on 2026-11-15. No event setup UI or event/game tables have been implemented or deployed.
