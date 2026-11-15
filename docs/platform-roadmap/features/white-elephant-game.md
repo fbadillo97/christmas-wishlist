@@ -1,110 +1,131 @@
 # White Elephant — Interactive Game
 
 - **Feature ID:** `white-elephant-game`
-- **State:** Proposed concept; not implemented. Gameplay details remain open for future conversations.
+- **State:** V1 scope agreed; specification updated; implementation not started.
 - **Initial planning:** Phase 4 · Medium priority · High complexity (assumption).
 - **Companion specification:** [White Elephant — Event Setup](white-elephant-setup.md) (`white-elephant-setup`).
 
-## 1. Overview and problem
+## 1. Overview
 
-White Elephant has two different needs: organize an event and house rules before the party, then guide a live exchange where participants, wrapped gifts and physical actions can be hard to coordinate. A hybrid interface could use a television as the room display, one host as game authority, and players' phones for interaction.
+Build a light, room-friendly companion for the family White Elephant exchange. A shared TV shows the game, while one or more hosts use phones to record and confirm the physical actions. The app should keep the game moving and add a little fun; the family can continue manually if the internet is unavailable.
 
-## 2. Goals and non-goals
+This is also a low-stakes way to learn how to build a real-time application with AI. The family experience and the development exercise both matter.
 
-**Goals:** support setup, participant joining, a configurable ruleset, synchronized live state, host recovery, and an understandable final result.
+## 2. V1 goals and boundaries
 
-**Non-goals for the initial concept:** implement the game now, require all guests to create permanent accounts, require gift products/photos to be registered in advance, or finalize every house rule before a later requirements discussion.
+### Goals
 
-## 3. Proposed experience
+- Set up an event, enter its participants, and configure a readable ruleset.
+- Let multiple authorized family hosts operate the same game.
+- Keep the full turn order hidden; reveal one person at a time.
+- Track opened gifts, ownership, steal counts, locks, pending actions, and the active turn.
+- Synchronize host phones and a read-only TV display through Supabase.
+- Recover the current saved game after refresh or reconnect.
+- Make steals, locked gifts, and the ending entertaining without slowing the exchange.
+- Support a simple pause/resume and quick undo for mistakes.
 
-- **Before the event:** organizer creates the exchange, sets participants and initial rules, and opens a lobby.
-- **Joining:** QR code and short code let guests join with an event-specific identity; host approves names.
-- **TV:** full-screen board with current player, turn number, opened gifts/owners, next players, and clear action prompts. It is display-first and read-only.
-- **Host phone:** controls start/pause/resume, confirms physical actions when configured, corrects mistakes, undoes a recent action, skips or advances when the rules permit, and resolves disputes.
-- **Player phone:** shows their turn and current gift; lets them select an eligible action or submit a steal/open-gift choice. In hybrid mode, host remains authoritative.
-- **After play:** show final gift ownership and a short summary. Retention policy is undecided.
+### V1 exclusions
 
-## 4. Functional requirements (proposed)
+- Player accounts, player phones, QR guest registration, or permanent player profiles.
+- Voice narration or AI-generated live dialogue.
+- Host-triggered reaction buttons.
+- A separate full-screen gift gallery.
+- Offline synchronization.
+- A complex points system or competitive leaderboard.
 
-1. Create an event and roster, invite/approve guests, and randomize or host-define turn order.
-2. Keep the rules configuration readable and explain how each rule affects play.
-3. Track turns separately from the multiple actions that may occur during a turn.
-4. Validate that a selected gift is eligible, steals respect locks/limits, and turn ownership cannot conflict.
-5. If a player is stolen from, present the configured replacement action flow; exact chain semantics remain an open gameplay decision.
-6. Allow reconnecting TV/phones to recover current state after refresh or network loss.
-7. Record each state transition, host correction, undo and rule change.
-8. Prevent simultaneous actions from causing conflicting gift ownership.
+Players do not need a phone or account. Hosts use their existing approved family accounts. The TV is a shared display, not a host control surface.
 
-## 5. Administration and rule configuration
+## 3. V1 experience
 
-The future Administration area should provide a ruleset editor with sensible presets and direct controls for the house rules. Where safe, authorized hosts may adjust rules during a live event. The interface should show the current value, whether it can change now, the consequence, and require host confirmation for consequential changes. Rules changes are versioned and announced on all connected displays.
+### Before play
 
-| Candidate rule | Before game | During game (candidate policy) | Notes |
-|---|---|---|---|
-| Maximum steals per gift | Configurable | Safe to increase; reducing requires validation and host confirmation | Must not make existing gift state invalid. |
-| Immediate steal-back restriction | Configurable | Change only with host confirmation; affects current action eligibility | Define whether the restriction applies to same player, same gift, or both. |
-| First player's final exchange | Configurable | Lock once final turn starts | Timing and eligible gifts need definition. |
-| Turn-order selection | Random draw or host-defined | Locked after first turn | A later correction requires pause and audit. |
-| Host confirmation | Required / automatic eligible moves | Safe to require more confirmation; disabling requires confirmation | Physical actions are not observable by the backend. |
-| Gift lock rules | Configurable | Lock after game begins unless validation permits change | Define what locks a gift. |
-| Turn timing | Optional timer / no timer | May be adjusted if no timer is currently expiring | Avoid forcing players to use phones quickly. |
-| Additional house rules | Future extension | Depends on rule-specific validation | Do not promise arbitrary rules as a generic toggle. |
+A host creates an event, enters the participant names, and reviews the rule preset. The rules can be adjusted in administration where the change is safe and clear. The order is randomized and kept hidden.
 
-These are planning candidates, not final behavior. Exact classifications should be reviewed with the full rule list and state model before implementation.
+Gifts are selected from a single wrapped pile. They do not need labels or photos before play. A gift receives its game identity when first opened. Hosts can optionally add a short description or take a photo after it is opened.
 
-### Live rule-change safety model
+### During play
 
-- **Safe change:** update has no effect on already resolved actions and cannot invalidate current state (for example, increasing a future steal cap). Apply and broadcast immediately with audit record.
-- **Host confirmation and validation:** pause or validate current state, show affected players/gifts and reject changes that conflict with prior actions (for example, reducing a steal limit below the count already reached).
-- **Locked after start:** a change would rewrite established turn order or reinterpret past actions. Require ending/restarting the game or a documented host correction flow rather than silently applying it.
+The TV keeps the current player prominent and shows a compact overview of opened gifts, their owners, and lock status. Design for people viewing from across the room. A steal temporarily highlights the people and gift involved, then returns to the board.
 
-At any edit, the server must validate against current game state, apply a versioned update atomically, record actor/time/before/after values, and publish the new rule version. If validation fails, no part of the change should apply.
+A host records the physical move as a pending action and confirms it. The server validates and saves the action atomically; other hosts and the TV then receive the updated state. Only one game action may be pending at a time. If a player is stolen from, the game follows the agreed replacement-turn/steal-chain rule once that rule is finalized.
 
-## 6. Technical considerations
+When a numbered turn begins, the TV briefly reveals that player with their name and a playful visual treatment. It does not reveal future players. Gift photos are optional and uploaded after the game action is saved, so a slow upload cannot block a turn. Photos are private and follow the gift if it changes owners.
 
-GitHub Pages can host separate display, host and player views. Supabase Realtime may distribute updates, but all moves and rules must be validated server-side. Use a dedicated event/game schema separate from wishlist gift records. Keep event join credentials short-lived and scoped. A paired TV display URL should be read-only and use a short-lived pairing code. Plan for transactions, reconnects, idempotency, stale client versions, and host recovery.
+Hosts can start a playful countdown with no penalty for running out. Any host can pause/resume the game. Any host can undo the most recent completed action after a quick confirmation; undo is unavailable while an action is pending and restores the prior ownership, steal count, and active game state.
 
-## 7. Data and security considerations
+### End of play
 
-The host signs in with an approved family account. Guest identities should be event-scoped and expire according to a decided retention policy. Players must not see another person's private assignments or wishlist details beyond what the event explicitly permits. Host override actions require an audit record. Never expose service credentials in browser code.
+The TV presents a short, humorous awards sequence calculated from completed actions, followed by the final player-to-gift overview. Candidate awards:
 
-## 8. Dependencies
+- **Most Wanted Gift:** gift stolen the most times.
+- **Most Robbed:** player whose held gifts were stolen the most times.
+- **Biggest Gift Thief:** player who stole the most gifts.
+- **Longest Stealing Chain:** most consecutive steals during one numbered turn.
 
-`white-elephant-game` depends on `white-elephant-setup`. Both may depend on the broader event/occasion data model. The interactive game may depend on a future Events & Games navigation module.
+Ties should be shown as ties. An award with no qualifying action is skipped. These are jokes, not points or a serious leaderboard.
 
-## 9. Open questions
+## 4. Rules administration and safety
 
-- Which participants may join: approved family accounts, guests, or both?
-- Does a player phone action execute immediately or require host confirmation by default?
-- What happens after a gift is stolen, and when does the numbered turn advance?
-- What is the exact steal-back, lock, max-steal and first-player final-action logic?
-- Can the host skip a turn, and under what safeguards?
-- Are gifts represented as numbers, labels, optional descriptions or photos?
-- How long are event and turn records retained?
-- Should post-game statistics be retained or only the final ownership result?
-- How should TV pairing and disconnection recovery work on typical smart TVs?
+The host can configure supported house rules. The interface explains each rule and whether it can change during play. Do not present arbitrary rule toggles unless the engine can validate their effects.
 
-## 10. Decisions made
+| Rule | V1 direction | Change during a live game |
+|---|---|---|
+| Maximum steals per gift | Configurable preset | Increasing may be safe; reductions require validation and confirmation. |
+| Immediate steal-back restriction | Configurable once defined | Host confirmation and validation; exact restriction still open. |
+| First player's final opportunity | Configurable once defined | Lock after the final-turn phase begins. |
+| Turn-order method | Randomized, hidden order | Lock after the game starts. |
+| Countdown | Host-triggered, optional, no penalty | May start/cancel without changing game state. |
+| Pause | Host-controlled pause/resume | Always available to hosts; no game state is discarded. |
 
-- **Agreed:** future White Elephant should support a hybrid host and player experience.
-- **Agreed:** game rules should be controllable in Administration where possible, with safe changes available during play and validation/confirmation where needed.
-- **Proposed:** TV is the room display, host retains authority, player phones submit/interact, guest join can use QR codes, and Supabase holds synchronized state.
-- **Deferred:** detailed rules, joining policy, retention, default host confirmations, and final gameplay flow. Flesh these out before moving from Idea to Planned.
+Every game action and consequential rule change is checked against the latest server state. A rejected or stale action makes no partial update. Undo and corrections are recorded in the action history.
 
-## 11. Potential future enhancements
+## 5. Technical and deployment direction
 
-Animations, sound, reactions, spectator view, gift descriptions/photos, statistics, and a post-game shareable summary.
+- Keep the wishlist buildless and host White Elephant as an isolated page in the same GitHub Pages site/repository (for example, `white-elephant.html` with its own JavaScript and CSS files). Use relative asset paths so the page works under the repository's project path.
+- Use the existing wishlist Supabase project and family sign-in for hosts. Keep game tables and RPCs separate from wishlist gift/claim data. Do not use the separate Household Platform project for this game.
+- Store all game state in Supabase. Do not use browser local storage as a shared-state fallback.
+- Use server-side atomic validation for turns, steals, locks, rule changes, pause/resume, and undo. Realtime distributes saved changes; reconnecting clients fetch the latest state.
+- Give the TV a read-only, event-scoped pairing method. It must not receive host credentials or access wishlist data.
+- Put gift images in a private storage bucket, compress display copies, and enforce event access. Never add real family or game data to the public repository.
+- The public page source is visible; only the Supabase URL and publishable key may be in the client. Never expose a service key.
+- Start UI development with fabricated in-memory demo data. Demo mode must never call Supabase. Do not add production game schema or expose a launch link until the app and backend have been tested.
 
-## 12. Acceptance criteria (for a future release)
+If the full internet connection is lost, the game can continue manually. V1 does not reconcile offline moves.
 
-- The same valid event state appears on TV, host and player views after reconnect.
-- Server rejects invalid, stale and conflicting actions.
-- Host pause, correction and undo are auditable and recover safely.
-- Rule edits follow their safety class; invalid edits are atomic no-ops.
-- Mobile controls and TV display remain usable without exposing owner credentials.
-- A synthetic multi-client test covers concurrent actions, locks, steals, rule edits, disconnect/reconnect, and unauthorized access.
+## 6. Reliability and verification
 
-## 13. Implementation history
+- Show hosts whether the app is connected, reconnecting, or offline.
+- Reconnect automatically and fetch a fresh authoritative state after reconnect or page refresh.
+- Make conflicting or stale host actions fail safely with a clear message.
+- Preserve the current event through a browser refresh; do not start a new game implicitly.
+- Verify ownership, steal limits, lock states, undo, host authorization, and concurrent actions with synthetic accounts and gifts before family use.
+- Verify the TV layout on the actual TV and check host controls on a narrow phone screen.
+- Gift photo upload failure must not undo or block a valid gameplay action.
 
-None. Concept specification only. No live rules engine, event tables, or game UI have been implemented.
+## 7. Open decisions before backend implementation
 
+Do not invent these rules in code. Record the decisions here before implementing the rules engine:
+
+1. Exact default rules, including maximum steals and immediate steal-back behavior.
+2. What happens to a player whose gift is stolen: whether they act immediately, which actions they may take, and how a multi-steal chain ends.
+3. When a numbered turn advances and what final opportunity the first player receives.
+4. The meaning of a steal count and the exact moment a gift becomes locked.
+5. Which supported rules may change during a live game and how invalidating changes are handled.
+6. What participant information is entered and retained, and whether any personal portraits are in V1. Current direction is names with simple visual placeholders; persistent profiles/photos remain V2.
+7. How long completed event state, action history, and gift photos are retained, and how a TV pairing can be revoked.
+8. Countdown duration/default and whether sound effects are enabled by default.
+
+## 8. V2 candidates
+
+Revisit these only after family feedback and a successful V1 game:
+
+- Voice narration or an announcer.
+- Persistent gamer tags and player portraits.
+- Host-triggered reaction buttons.
+- A full-screen gift gallery.
+- Offline synchronization.
+- Further statistics or effects that family members ask for.
+
+## 9. Implementation history
+
+Planning decisions were consolidated on 2026-11-15. No game UI, game tables, storage bucket, or rules engine have been implemented or deployed.
