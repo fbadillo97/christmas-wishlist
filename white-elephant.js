@@ -14,7 +14,8 @@
     ]
   };
 
-  let state = structuredClone(baseState);
+  const copyBaseState = () => ({ ...baseState, gifts: baseState.gifts.map((gift) => ({ ...gift })) });
+  let state = copyBaseState();
   let countdownTimer = null;
   let countdownRemaining = 20;
   let photoObjectUrl = null;
@@ -210,7 +211,7 @@
     byId("awards-preview").hidden = true;
     byId("game-board").hidden = false;
     overlay.hidden = true;
-    state = structuredClone(baseState);
+    state = copyBaseState();
     renderPlayer();
     renderGifts();
   });
