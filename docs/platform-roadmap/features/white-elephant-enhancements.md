@@ -1,53 +1,42 @@
 # White Elephant Enhancements
 
 - **Feature ID:** `white-elephant-enhancements`
-- **State:** Future idea; not implemented.
-- **Initial planning:** Phase 4 · Low priority · Medium complexity (assumption).
+- **State:** V2 candidates; no enhancements implemented.
+- **Initial planning:** Phase 4 · Low priority · Medium complexity (assumptions).
+- **Dependency:** [White Elephant Interactive Game](white-elephant-game.md).
 
-## Overview and problem
+## Overview
 
-After the core game works reliably, additional presentation and host tools may improve the party experience.
+This feature tracks additions that should be considered after a family has tried the core game. The following V1 presentation features are already part of the Interactive Game specification: optional gift photos after opening, a hybrid TV board, short visual turn/steal/lock moments, optional sound effects, a playful host-triggered countdown, and humorous end-of-game awards. They do not need to be implemented as a separate feature.
 
-## Goals and non-goals
+## V2 candidates
 
-- **Goals:** add optional room-friendly polish without slowing play or hiding game state.
-- **Non-goals:** prioritize visual effects before reliable rules, turns and recovery.
+- Voice narration or a game-show announcer.
+- Persistent gamer tags and player portraits.
+- Host-triggered reaction buttons, after feedback from people willing to host.
+- A full-screen gift gallery, if the normal game board proves insufficient.
+- Offline synchronization, only if the first version proves useful and offline play is a real need.
+- Additional statistics or presentation ideas requested after family feedback.
 
-## Proposed experience and functional requirements
+## Design principles
 
-Candidate additions include brief animations, optional sound, live reactions, spectator mode, event statistics, awards, gift descriptions/photos and enhanced host controls. Each should be optional, accessible, and usable with sound off.
-
-## Administration requirements
-
-Let the host enable or disable presentation options and respect device/reduced-motion preferences. Statistics and history need a retention decision.
-
-## Technical, data and security considerations
-
-Keep effects lightweight for smart-TV browsers. Do not expose private player information in spectator mode. Avoid third-party trackers and unapproved uploads. Failures in effects must not block game state transitions.
-
-## Dependencies
-
-White Elephant Interactive Game (`white-elephant-game`).
+- Keep optional effects brief, skippable, and usable with sound off.
+- Respect reduced-motion preferences.
+- Effects must never delay, block, or change a saved game action.
+- Avoid adding host controls that distract from managing physical exchanges.
+- Do not introduce points or a competitive leaderboard without a separate discussion.
 
 ## Open questions
 
-- Which additions make the shared room more fun without drawing attention away from people?
-- Should sound be opt-in per device or host-controlled?
-- What statistics are harmless to retain?
-
-## Decisions made
-
-- **Proposed:** defer enhancements until core live play has been tested.
-
-## Future enhancements
-
-All candidates above remain subject to a later discussion and complexity review.
+- Which V2 ideas did family members actually enjoy or ask for?
+- Is narration welcome in a room with 18 participants?
+- Would a gallery solve a real problem during the game?
+- Is offline support worth its implementation and recovery complexity?
 
 ## Acceptance criteria
 
-Optional presentation features never prevent core gameplay, honor accessibility settings and do not disclose more data than the event participants expect.
+Any enhancement remains optional and accessible, cannot block core gameplay, and does not expose more event data than the host and participants expect.
 
 ## Implementation history
 
-None. Planning record only.
-
+V1 and V2 presentation boundaries were recorded on 2026-11-15. No enhancement work has been implemented.
