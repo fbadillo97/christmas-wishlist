@@ -1,7 +1,7 @@
 # White Elephant — Interactive Game
 
 - **Feature ID:** `white-elephant-game`
-- **State:** V1 scope agreed; specification updated; implementation not started.
+- **State:** V1 scope agreed; mock-only visual prototype prepared; live game implementation not started.
 - **Initial planning:** Phase 4 · Medium priority · High complexity (assumption).
 - **Companion specification:** [White Elephant — Event Setup](white-elephant-setup.md) (`white-elephant-setup`).
 
@@ -128,4 +128,4 @@ Revisit these only after family feedback and a successful V1 game:
 
 ## 9. Implementation history
 
-Planning decisions were consolidated on 2026-11-15. No game UI, game tables, storage bucket, or rules engine have been implemented or deployed.
+Planning decisions were consolidated on 2026-11-15. A standalone mock-only page previews the host console, TV board, turn reveal, steal moment, countdown, temporary photo preview, and awards. It uses fabricated data in memory only, makes no backend requests, and is not linked from the wishlist navigation. No Supabase game tables, storage bucket, or live rules engine have been implemented or deployed.
