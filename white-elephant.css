@@ -397,18 +397,18 @@ body[data-view="tv"] .wrapped-count small,
 body[data-view="tv"] .board-status {
   font-size: clamp(12px, .75vw, 16px);
 }
-@media (max-height: 760px) and (min-width: 701px) {
-  body[data-view="tv"] .page { padding-top: .8vh; }
-  body[data-view="tv"] .board-top { margin-bottom: .7vh; }
-  body[data-view="tv"] .spotlight { min-height: 108px; padding-top: 21px; padding-bottom: 12px; }
-  body[data-view="tv"] .board-section-heading { margin: .9vh 0 .5vh; }
-  body[data-view="tv"] .gift-grid { gap: 7px; }
-  body[data-view="tv"] .gift-art { height: 62px; }
+@media (max-height: 900px) and (min-width: 701px) {
+  body[data-view="tv"] .page { padding-top: .7vh; }
+  body[data-view="tv"] .board-top { margin-bottom: .6vh; }
+  body[data-view="tv"] .spotlight { min-height: 104px; padding-top: 20px; padding-bottom: 11px; }
+  body[data-view="tv"] .board-section-heading { margin: .7vh 0 .4vh; }
+  body[data-view="tv"] .gift-grid { gap: 6px; }
+  body[data-view="tv"] .gift-art { height: 56px; }
   body[data-view="tv"] .gift-info { padding-top: 5px; padding-bottom: 5px; }
   body[data-view="tv"] .gift-name { font-size: 17px; }
   body[data-view="tv"] .gift-owner { font-size: 11px; }
   body[data-view="tv"] .gift-stat { margin-top: 2px; }
-  body[data-view="tv"] .board-footer { margin-top: 6px; }
+  body[data-view="tv"] .board-footer { margin-top: 5px; }
 }
 @media (max-width: 700px) {
   body[data-view="tv"] .page { width: 96vw; padding: 14px 1vw; }
