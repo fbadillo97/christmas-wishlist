@@ -527,4 +527,35 @@ body[data-view="tv"][data-layout="split"] .gift-name {
   body[data-view="tv"][data-layout="split"] .gift-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+}/* Three rows stay visible; at seven gifts the TV cycles through rows hands-free. */
+body[data-view="tv"][data-layout="split"] .gift-grid.is-scrollable {
+  max-height: calc(3 * clamp(150px, 16vh, 185px) + 2 * clamp(12px, 1vw, 22px));
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 8px;
+  scrollbar-gutter: stable;
+  scrollbar-color: #91a196 #edf0e8;
+  overscroll-behavior-y: contain;
+}
+body[data-view="tv"][data-layout="split"] .gift-grid.is-scrollable::-webkit-scrollbar {
+  width: 12px;
+}
+body[data-view="tv"][data-layout="split"] .gift-grid.is-scrollable::-webkit-scrollbar-track {
+  border-radius: 10px;
+  background: #edf0e8;
+}
+body[data-view="tv"][data-layout="split"] .gift-grid.is-scrollable::-webkit-scrollbar-thumb {
+  border: 3px solid #edf0e8;
+  border-radius: 10px;
+  background: #91a196;
+}
+@media (max-height: 900px) and (min-width: 701px) {
+  body[data-view="tv"][data-layout="split"] .gift-grid.is-scrollable {
+    max-height: calc(3 * 104px + 2 * clamp(12px, 1vw, 22px));
+  }
+}
+@media (max-width: 700px) {
+  body[data-view="tv"][data-layout="split"] .gift-grid.is-scrollable {
+    max-height: calc(3 * 94px + 2 * 8px);
+  }
 }
