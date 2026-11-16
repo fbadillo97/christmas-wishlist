@@ -17,12 +17,28 @@
   const copyBaseState = () => ({ ...baseState, gifts: baseState.gifts.map((gift) => ({ ...gift })) });
   let state = copyBaseState();
   let countdownTimer = null;
+  let giftAutoScrollTimer = null;
   let countdownRemaining = 20;
   let photoObjectUrl = null;
   let lastFocusedElement = null;
   const params = new URLSearchParams(window.location.search);
   const view = params.get("view") === "tv" ? "tv" : "host";
   const layout = view === "tv" && params.get("layout") === "split" ? "split" : "stacked";
+  const previewScroll = view === "tv" && layout === "split" && params.get("preview") === "scroll";
+
+  function makeInitialState() {
+    const next = copyBaseState();
+    if (previewScroll) {
+      next.wrapped -= 2;
+      next.gifts.push(
+        { id: 6, name: "Sample picnic blanket", owner: "Player 11", art: "🧺", color: "#e8eadb", moves: 1, locked: false },
+        { id: 7, name: "Sample movie night kit", owner: "Player 14", art: "🍿", color: "#f3e4d6", moves: 0, locked: false }
+      );
+    }
+    return next;
+  }
+
+  state = makeInitialState();
   document.body.dataset.view = view;
   document.body.dataset.layout = layout;
 
@@ -43,6 +59,45 @@
   } else {
     tvLink.setAttribute("aria-current", "page");
   }
+
+  function stopGiftAutoScroll() {
+    if (giftAutoScrollTimer !== null) {
+      window.clearInterval(giftAutoScrollTimer);
+      giftAutoScrollTimer = null;
+    }
+  }
+
+  function advanceGiftRows() {
+    const maxScroll = giftGrid.scrollHeight - giftGrid.clientHeight;
+    if (maxScroll <= 4) return;
+    if (giftGrid.scrollTop >= maxScroll - 6) {
+      giftGrid.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
+
+    const gridTop = giftGrid.getBoundingClientRect().top;
+    const rowPositions = [...giftGrid.querySelectorAll(".gift-card")]
+      .map((card) => Math.round(card.getBoundingClientRect().top - gridTop + giftGrid.scrollTop))
+      .filter((position, index, positions) => positions.indexOf(position) === index)
+      .sort((a, b) => a - b);
+    const nextRow = rowPositions.find((position) => position > giftGrid.scrollTop + 8);
+    if (nextRow !== undefined) {
+      giftGrid.scrollTo({ top: Math.min(nextRow, maxScroll), behavior: "smooth" });
+    } else {
+      giftGrid.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }
+
+  function updateGiftAutoScroll() {
+    stopGiftAutoScroll();
+    const shouldAutoScroll = view === "tv" && layout === "split"
+      && state.gifts.length > 6
+      && !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (!shouldAutoScroll || document.hidden) return;
+    giftAutoScrollTimer = window.setInterval(advanceGiftRows, 8000);
+  }
+
+  document.addEventListener("visibilitychange", updateGiftAutoScroll);
 
   function renderGifts() {
     giftGrid.replaceChildren();
@@ -83,6 +138,7 @@
     const isScrollable = state.gifts.length > 6;
     giftGrid.classList.toggle("is-scrollable", isScrollable);
     if (!isScrollable) giftGrid.scrollTop = 0;
+    updateGiftAutoScroll();
   }
 
   function renderPlayer() {
@@ -220,7 +276,7 @@
     byId("awards-preview").hidden = true;
     byId("game-board").hidden = false;
     overlay.hidden = true;
-    state = copyBaseState();
+    state = makeInitialState();
     renderPlayer();
     renderGifts();
   });
