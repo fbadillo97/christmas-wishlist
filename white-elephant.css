@@ -495,3 +495,36 @@ body[data-view="tv"][data-layout="split"] .board-footer {
   body[data-view="tv"][data-layout="split"] .gift-name { font-size: 13px; }
   body[data-view="tv"][data-layout="split"] .gift-owner { font-size: 9px; }
 }
+
+/* Tune split view for wide TV screens: stronger player focus and two gift cards per row. */
+body[data-view="tv"][data-layout="split"] .game-board {
+  grid-template-columns: minmax(340px, .38fr) minmax(0, .62fr);
+}
+body[data-view="tv"][data-layout="split"] .spotlight {
+  align-self: center;
+  min-height: clamp(360px, 46vh, 520px);
+}
+body[data-view="tv"][data-layout="split"] .gift-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(12px, 1vw, 22px);
+}
+body[data-view="tv"][data-layout="split"] .gift-card {
+  grid-template-columns: clamp(74px, 5.2vw, 108px) minmax(0, 1fr);
+  min-height: clamp(150px, 16vh, 185px);
+}
+body[data-view="tv"][data-layout="split"] .gift-art {
+  width: 100%;
+  font-size: clamp(32px, 2.5vw, 54px);
+}
+body[data-view="tv"][data-layout="split"] .gift-info {
+  padding: 10px clamp(10px, .8vw, 16px);
+}
+body[data-view="tv"][data-layout="split"] .gift-name {
+  font-size: clamp(17px, 1.05vw, 30px);
+}
+@media (max-width: 700px) {
+  body[data-view="tv"][data-layout="split"] .game-board { display: block; }
+  body[data-view="tv"][data-layout="split"] .gift-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
