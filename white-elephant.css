@@ -527,35 +527,101 @@ body[data-view="tv"][data-layout="split"] .gift-name {
   body[data-view="tv"][data-layout="split"] .gift-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-}/* Three rows stay visible; at seven gifts the TV cycles through rows hands-free. */
+}/* Keep exactly three complete rows in view and hide the scrollbar on the unattended TV. */
 body[data-view="tv"][data-layout="split"] .gift-grid.is-scrollable {
-  max-height: calc(3 * clamp(150px, 16vh, 185px) + 2 * clamp(12px, 1vw, 22px));
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding-right: 8px;
-  scrollbar-gutter: stable;
-  scrollbar-color: #91a196 #edf0e8;
-  overscroll-behavior-y: contain;
+  --gift-loop-gap: clamp(12px, 1vw, 22px);
+  --gift-card-height: clamp(106px, 10.5vh, 124px);
+  height: calc(3 * var(--gift-card-height) + 2 * var(--gift-loop-gap));
+  max-height: none;
+  display: block;
+  overflow: hidden;
+  padding-right: 0;
+  scrollbar-width: none;
+  overscroll-behavior: contain;
 }
 body[data-view="tv"][data-layout="split"] .gift-grid.is-scrollable::-webkit-scrollbar {
-  width: 12px;
+  display: none;
 }
-body[data-view="tv"][data-layout="split"] .gift-grid.is-scrollable::-webkit-scrollbar-track {
-  border-radius: 10px;
-  background: #edf0e8;
+body[data-view="tv"][data-layout="split"] .gift-scroll-track {
+  display: flex;
+  flex-direction: column;
+  row-gap: var(--gift-loop-gap, 0px);
 }
-body[data-view="tv"][data-layout="split"] .gift-grid.is-scrollable::-webkit-scrollbar-thumb {
-  border: 3px solid #edf0e8;
-  border-radius: 10px;
-  background: #91a196;
+body[data-view="tv"][data-layout="split"] .gift-scroll-track.is-looping {
+  animation: gift-list-loop var(--gift-cycle-duration, 32s) linear infinite;
+  will-change: transform;
+}
+body[data-view="tv"][data-layout="split"] .gift-scroll-track.is-paused {
+  animation-play-state: paused;
+}
+body[data-view="tv"][data-layout="split"] .gift-grid-group {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: var(--gift-loop-gap, 0px);
+  row-gap: var(--gift-loop-gap, 0px);
+}
+body[data-view="tv"][data-layout="split"] .gift-grid.is-scrollable .gift-card {
+  height: var(--gift-card-height);
+  min-height: 0;
+  overflow: hidden;
+  grid-template-columns: clamp(62px, 4.2vw, 86px) minmax(0, 1fr);
+}
+body[data-view="tv"][data-layout="split"] .gift-grid.is-scrollable .gift-art {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 4 / 5;
+  font-size: clamp(30px, 2.2vw, 48px);
+}
+body[data-view="tv"][data-layout="split"] .gift-grid.is-scrollable .gift-info {
+  padding: 7px clamp(8px, .65vw, 13px);
+}
+body[data-view="tv"][data-layout="split"] .gift-grid.is-scrollable .gift-name {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  font-size: clamp(15px, .95vw, 24px);
+}
+body[data-view="tv"][data-layout="split"] .gift-grid.is-scrollable .gift-owner {
+  font-size: clamp(10px, .62vw, 15px);
+  white-space: nowrap;
+}
+body[data-view="tv"][data-layout="split"] .gift-grid.is-scrollable .gift-stat {
+  flex-wrap: nowrap;
+  overflow: hidden;
+  white-space: nowrap;
+  font-size: clamp(8px, .44vw, 12px);
+}
+@keyframes gift-list-loop {
+  from { transform: translateY(0); }
+  to { transform: translateY(calc(0px - var(--gift-loop-distance, 100%))); }
 }
 @media (max-height: 900px) and (min-width: 701px) {
   body[data-view="tv"][data-layout="split"] .gift-grid.is-scrollable {
-    max-height: calc(3 * 104px + 2 * clamp(12px, 1vw, 22px));
+    --gift-loop-gap: clamp(10px, .8vw, 16px);
+    --gift-card-height: clamp(94px, 11.5vh, 112px);
   }
 }
 @media (max-width: 700px) {
   body[data-view="tv"][data-layout="split"] .gift-grid.is-scrollable {
-    max-height: calc(3 * 94px + 2 * 8px);
+    --gift-loop-gap: 8px;
+    --gift-card-height: 94px;
+  }
+  body[data-view="tv"][data-layout="split"] .gift-grid.is-scrollable .gift-card {
+    grid-template-columns: 48px minmax(0, 1fr);
+  }
+  body[data-view="tv"][data-layout="split"] .gift-grid.is-scrollable .gift-art {
+    width: 48px;
+    font-size: 23px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  body[data-view="tv"][data-layout="split"] .gift-grid.is-scrollable {
+    height: calc(3 * var(--gift-card-height) + 2 * var(--gift-loop-gap));
+    overflow-y: auto;
+    scrollbar-width: none;
+  }
+  body[data-view="tv"][data-layout="split"] .gift-scroll-track.is-looping {
+    animation: none;
   }
 }

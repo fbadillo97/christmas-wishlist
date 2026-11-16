@@ -17,7 +17,6 @@
   const copyBaseState = () => ({ ...baseState, gifts: baseState.gifts.map((gift) => ({ ...gift })) });
   let state = copyBaseState();
   let countdownTimer = null;
-  let giftAutoScrollTimer = null;
   let countdownRemaining = 20;
   let photoObjectUrl = null;
   let lastFocusedElement = null;
@@ -60,47 +59,29 @@
     tvLink.setAttribute("aria-current", "page");
   }
 
-  function stopGiftAutoScroll() {
-    if (giftAutoScrollTimer !== null) {
-      window.clearInterval(giftAutoScrollTimer);
-      giftAutoScrollTimer = null;
-    }
+  function updateGiftLoopSizing() {
+    const track = giftGrid.querySelector(".gift-scroll-track");
+    const group = track && track.querySelector(".gift-grid-group");
+    if (!track || !group || !track.classList.contains("is-looping")) return;
+    const gap = parseFloat(window.getComputedStyle(track).rowGap) || 0;
+    track.style.setProperty("--gift-loop-distance", `${group.getBoundingClientRect().height + gap}px`);
+    track.style.setProperty("--gift-cycle-duration", `${Math.ceil(state.gifts.length / 2) * 8}s`);
   }
 
-  function advanceGiftRows() {
-    const maxScroll = giftGrid.scrollHeight - giftGrid.clientHeight;
-    if (maxScroll <= 4) return;
-    if (giftGrid.scrollTop >= maxScroll - 6) {
-      giftGrid.scrollTo({ top: 0, behavior: "smooth" });
-      return;
-    }
-
-    const gridTop = giftGrid.getBoundingClientRect().top;
-    const rowPositions = [...giftGrid.querySelectorAll(".gift-card")]
-      .map((card) => Math.round(card.getBoundingClientRect().top - gridTop + giftGrid.scrollTop))
-      .filter((position, index, positions) => positions.indexOf(position) === index)
-      .sort((a, b) => a - b);
-    const nextRow = rowPositions.find((position) => position > giftGrid.scrollTop + 8);
-    if (nextRow !== undefined) {
-      giftGrid.scrollTo({ top: Math.min(nextRow, maxScroll), behavior: "smooth" });
-    } else {
-      giftGrid.scrollTo({ top: 0, behavior: "smooth" });
-    }
+  function syncGiftLoopVisibility() {
+    const track = giftGrid.querySelector(".gift-scroll-track");
+    if (track) track.classList.toggle("is-paused", document.hidden);
   }
 
-  function updateGiftAutoScroll() {
-    stopGiftAutoScroll();
-    const shouldAutoScroll = view === "tv" && layout === "split"
-      && state.gifts.length > 6
-      && !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (!shouldAutoScroll || document.hidden) return;
-    giftAutoScrollTimer = window.setInterval(advanceGiftRows, 8000);
-  }
-
-  document.addEventListener("visibilitychange", updateGiftAutoScroll);
+  window.addEventListener("resize", updateGiftLoopSizing);
+  document.addEventListener("visibilitychange", syncGiftLoopVisibility);
 
   function renderGifts() {
     giftGrid.replaceChildren();
+    const shouldClip = view === "tv" && layout === "split" && state.gifts.length > 6;
+    const shouldLoop = shouldClip && !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const giftGroup = shouldClip ? document.createElement("div") : giftGrid;
+    if (shouldClip) giftGroup.className = "gift-grid-group";
     state.gifts.forEach((gift) => {
       const card = document.createElement("article");
       card.className = `gift-card${gift.locked ? " is-locked" : ""}`;
@@ -131,14 +112,27 @@
       }
       info.append(name, owner, stat);
       card.append(art, info);
-      giftGrid.append(card);
+      giftGroup.append(card);
     });
     byId("gift-count").textContent = String(state.gifts.length);
     byId("wrapped-number").textContent = `${state.wrapped} gifts`;
-    const isScrollable = state.gifts.length > 6;
-    giftGrid.classList.toggle("is-scrollable", isScrollable);
-    if (!isScrollable) giftGrid.scrollTop = 0;
-    updateGiftAutoScroll();
+    giftGrid.classList.toggle("is-scrollable", shouldClip);
+    giftGrid.classList.toggle("is-looping", shouldLoop);
+    if (shouldClip) {
+      const track = document.createElement("div");
+      track.className = "gift-scroll-track";
+      track.append(giftGroup);
+      if (shouldLoop) {
+        const clone = giftGroup.cloneNode(true);
+        clone.classList.add("is-clone");
+        clone.setAttribute("aria-hidden", "true");
+        track.append(clone);
+        track.classList.add("is-looping");
+      }
+      giftGrid.append(track);
+      updateGiftLoopSizing();
+      syncGiftLoopVisibility();
+    }
   }
 
   function renderPlayer() {
