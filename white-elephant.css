@@ -527,4 +527,25 @@ body[data-view="tv"][data-layout="split"] .gift-name {
   body[data-view="tv"][data-layout="split"] .gift-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+}/* Keep three gift rows visible; the seventh card turns on scrolling inside the gift area. */
+body[data-view="tv"][data-layout="split"] .gift-grid.is-scrollable {
+  max-height: clamp(486px, calc(48vh + 2vw), 600px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 8px;
+  scrollbar-gutter: stable;
+  scrollbar-color: #91a196 #edf0e8;
+  overscroll-behavior-y: contain;
+}
+body[data-view="tv"][data-layout="split"] .gift-grid.is-scrollable::-webkit-scrollbar {
+  width: 12px;
+}
+body[data-view="tv"][data-layout="split"] .gift-grid.is-scrollable::-webkit-scrollbar-track {
+  border-radius: 10px;
+  background: #edf0e8;
+}
+body[data-view="tv"][data-layout="split"] .gift-grid.is-scrollable::-webkit-scrollbar-thumb {
+  border: 3px solid #edf0e8;
+  border-radius: 10px;
+  background: #91a196;
 }
