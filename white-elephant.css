@@ -498,7 +498,7 @@ body[data-view="tv"][data-layout="split"] .board-footer {
 
 /* Tune split view for wide TV screens: stronger player focus and two gift cards per row. */
 body[data-view="tv"][data-layout="split"] .game-board {
-  grid-template-columns: minmax(340px, .38fr) minmax(0, .62fr);
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
 }
 body[data-view="tv"][data-layout="split"] .spotlight {
   align-self: center;
