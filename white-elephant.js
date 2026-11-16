@@ -80,6 +80,9 @@
     });
     byId("gift-count").textContent = String(state.gifts.length);
     byId("wrapped-number").textContent = `${state.wrapped} gifts`;
+    const isScrollable = state.gifts.length > 6;
+    giftGrid.classList.toggle("is-scrollable", isScrollable);
+    if (!isScrollable) giftGrid.scrollTop = 0;
   }
 
   function renderPlayer() {
