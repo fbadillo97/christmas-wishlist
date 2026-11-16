@@ -527,11 +527,11 @@ body[data-view="tv"][data-layout="split"] .gift-name {
   body[data-view="tv"][data-layout="split"] .gift-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-}/* Keep exactly three complete rows in view and hide the scrollbar on the unattended TV. */
+}/* A fourth row gives the moving ticker room to keep three complete rows visible. */
 body[data-view="tv"][data-layout="split"] .gift-grid.is-scrollable {
   --gift-loop-gap: clamp(12px, 1vw, 22px);
   --gift-card-height: clamp(106px, 10.5vh, 124px);
-  height: calc(3 * var(--gift-card-height) + 2 * var(--gift-loop-gap));
+  height: calc(4 * var(--gift-card-height) + 3 * var(--gift-loop-gap));
   max-height: none;
   display: block;
   overflow: hidden;
@@ -606,6 +606,7 @@ body[data-view="tv"][data-layout="split"] .gift-grid.is-scrollable .gift-stat {
   body[data-view="tv"][data-layout="split"] .gift-grid.is-scrollable {
     --gift-loop-gap: 8px;
     --gift-card-height: 94px;
+    height: calc(3 * var(--gift-card-height) + 2 * var(--gift-loop-gap));
   }
   body[data-view="tv"][data-layout="split"] .gift-grid.is-scrollable .gift-card {
     grid-template-columns: 48px minmax(0, 1fr);
