@@ -343,3 +343,155 @@ body[data-view="tv"] .board-status { font-size: clamp(12px, .75vw, 17px); }
   body[data-view="tv"] .gift-name { font-size: 16px; }
   body[data-view="tv"] .gift-owner { font-size: 11px; }
 }
+
+/* Alternate TV layout: fixed player focus beside portrait gift cards. */
+body[data-view="tv"][data-layout="split"] .game-board {
+  display: grid;
+  grid-template-columns: minmax(280px, .32fr) minmax(0, .68fr);
+  grid-template-rows: auto auto 1fr auto;
+  align-items: start;
+  column-gap: clamp(18px, 2vw, 40px);
+  row-gap: clamp(8px, 1vh, 16px);
+}
+body[data-view="tv"][data-layout="split"] .board-top {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  margin-bottom: 0;
+}
+body[data-view="tv"][data-layout="split"] .spotlight {
+  grid-column: 1;
+  grid-row: 2 / 4;
+  min-height: clamp(330px, 58vh, 700px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(14px, 2vh, 28px);
+  padding: 54px clamp(20px, 2vw, 40px);
+  text-align: center;
+}
+body[data-view="tv"][data-layout="split"] .spotlight-label {
+  top: 22px;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-size: clamp(11px, .75vw, 16px);
+}
+body[data-view="tv"][data-layout="split"] .player-token {
+  width: clamp(88px, 8vw, 150px);
+  flex: 0 0 auto;
+  font-size: clamp(27px, 2.3vw, 46px);
+}
+body[data-view="tv"][data-layout="split"] .spotlight-copy {
+  padding: 0;
+}
+body[data-view="tv"][data-layout="split"] .reveal-caption {
+  font-size: clamp(14px, .9vw, 20px);
+}
+body[data-view="tv"][data-layout="split"] .spotlight-copy h3 {
+  font-size: clamp(38px, 3.2vw, 68px);
+  overflow-wrap: anywhere;
+}
+body[data-view="tv"][data-layout="split"] .spotlight-copy > p:last-child {
+  font-size: clamp(14px, .9vw, 20px);
+}
+body[data-view="tv"][data-layout="split"] .spotlight-decoration {
+  position: absolute;
+  right: 20px;
+  bottom: 14px;
+  padding: 0;
+  font-size: clamp(32px, 3vw, 58px);
+}
+body[data-view="tv"][data-layout="split"] .board-section-heading {
+  grid-column: 2;
+  grid-row: 2;
+  margin: 0;
+}
+body[data-view="tv"][data-layout="split"] .board-section-heading h3 {
+  font-size: clamp(23px, 1.8vw, 38px);
+}
+body[data-view="tv"][data-layout="split"] .board-hint {
+  max-width: 200px;
+  font-size: clamp(11px, .7vw, 16px);
+}
+body[data-view="tv"][data-layout="split"] .gift-grid {
+  grid-column: 2;
+  grid-row: 3;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, clamp(205px, 17vw, 270px)), 1fr));
+  align-content: start;
+  gap: clamp(8px, .65vw, 16px);
+}
+body[data-view="tv"][data-layout="split"] .gift-card {
+  display: grid;
+  grid-template-columns: clamp(58px, 5vw, 96px) minmax(0, 1fr);
+  align-items: center;
+  min-height: clamp(112px, 12vh, 150px);
+  border-radius: 10px;
+}
+body[data-view="tv"][data-layout="split"] .gift-art {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 4 / 5;
+  justify-self: center;
+  border-radius: 7px;
+  font-size: clamp(28px, 2.2vw, 48px);
+}
+body[data-view="tv"][data-layout="split"] .gift-art img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+body[data-view="tv"][data-layout="split"] .gift-info {
+  min-width: 0;
+  padding: 8px clamp(8px, .65vw, 14px);
+}
+body[data-view="tv"][data-layout="split"] .gift-name {
+  min-height: 0;
+  font-size: clamp(15px, 1vw, 28px);
+  line-height: 1.15;
+}
+body[data-view="tv"][data-layout="split"] .gift-owner {
+  font-size: clamp(10px, .66vw, 18px);
+}
+body[data-view="tv"][data-layout="split"] .gift-stat {
+  flex-wrap: wrap;
+  font-size: clamp(8px, .48vw, 14px);
+}
+body[data-view="tv"][data-layout="split"] .board-footer {
+  grid-column: 1 / -1;
+  grid-row: 4;
+  margin-top: 0;
+}
+@media (max-height: 900px) and (min-width: 701px) {
+  body[data-view="tv"][data-layout="split"] .spotlight {
+    min-height: 300px;
+    padding-top: 48px;
+    padding-bottom: 32px;
+    gap: 12px;
+  }
+  body[data-view="tv"][data-layout="split"] .gift-card { min-height: 104px; }
+  body[data-view="tv"][data-layout="split"] .gift-art { width: clamp(54px, 4.5vw, 74px); }
+  body[data-view="tv"][data-layout="split"] .gift-info { padding-top: 5px; padding-bottom: 5px; }
+  body[data-view="tv"][data-layout="split"] .gift-stat { margin-top: 2px; }
+}
+@media (max-width: 700px) {
+  body[data-view="tv"][data-layout="split"] .game-board {
+    display: block;
+  }
+  body[data-view="tv"][data-layout="split"] .spotlight {
+    min-height: 240px;
+    margin-bottom: 16px;
+    padding: 48px 20px 24px;
+  }
+  body[data-view="tv"][data-layout="split"] .gift-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  body[data-view="tv"][data-layout="split"] .gift-card {
+    grid-template-columns: 48px minmax(0, 1fr);
+    min-height: 94px;
+  }
+  body[data-view="tv"][data-layout="split"] .gift-art { width: 48px; font-size: 23px; }
+  body[data-view="tv"][data-layout="split"] .gift-name { font-size: 13px; }
+  body[data-view="tv"][data-layout="split"] .gift-owner { font-size: 9px; }
+}
