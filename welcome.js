@@ -26,7 +26,7 @@
   event.preventDefault();if(!profile||busy||authorized)return;
   const id=operation,version=api.getGeneration();busy=true;$('#welcome-send').textContent='Sending…';sync({authorized,email:currentEmail});message('Sending your sign-in link…');
   try{
-   await api.request('/auth/v1/otp?redirect_to='+encodeURIComponent(location.origin+'/christmas-wishlist/'),{email:profile.email},false);
+   await api.request('/functions/v1/wishlist-signin',{email:profile.email,redirect_to:location.origin+'/christmas-wishlist/'},false);
    if(id!==operation||version!==api.getGeneration())return;
    message('Check your inbox! Open the new sign-in email on this device and choose the sign-in link to enter the wishlist.');
   }catch(error){if(id===operation&&version===api.getGeneration())message('Could not send your sign-in link: '+error.message,true);}
