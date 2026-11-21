@@ -65,7 +65,7 @@
 
  function edit(member){
   if(busy)return;if(dirty&&!window.confirm('Discard your unsaved account changes?'))return;
-  $('#account-editor').open=true;editing={...member};dirty=false;$('#member-form-title').textContent='Edit account';$('#member-name').value=member.first_name||'';$('#member-last-name').value=member.last_name||'';$('#member-id').textContent=member.account_id||'Assigned when saved';$('#member-email').value=member.email;$('#member-email').readOnly=true;
+  $('#account-editor').open=true;editing={...member};dirty=false;$('#member-form-title').textContent='Edit account';$('#member-name').value=member.first_name||'';$('#member-last-name').value=member.last_name||'';$('#member-id').textContent=member.account_id||'Assigned when saved';$('#member-email').value=member.email;$('#member-email').readOnly=false;
   $('#owner-option').hidden=member.role!=='owner';$('#member-role').value=member.role;$('#member-role').disabled=role!=='owner'||member.role==='owner';$('#member-active').checked=member.active;$('#member-active').disabled=member.role==='owner';$('#cancel-member').hidden=false;message('');$('#member-name').focus();
  }
  function resetTableFilters(){for(const key of tableFilterKeys)$('#member-filter-'+key).value='all';$('#member-search').value='';}
@@ -120,9 +120,25 @@
   event.preventDefault();if(!allowed()||busy)return;const version=api.getGeneration();
   const payload={p_email:$('#member-email').value.trim(),p_first_name:$('#member-name').value.trim(),p_last_name:$('#member-last-name').value.trim(),p_role:$('#member-role').value,p_active:$('#member-active').checked,p_revision:editing?.revision??null};
   if(editing?.active&&!payload.p_active&&!window.confirm('Remove wishlist access for '+editing.email+'? Existing selections will be preserved.'))return;
+  const emailChanged=Boolean(editing&&payload.p_email.toLowerCase()!==editing.email.toLowerCase());
+  if(emailChanged&&!window.confirm('Change the sign-in email from '+editing.email+' to '+payload.p_email+'? The old email will lose access. Existing selections will be preserved, passkeys may be removed, and the account holder will need to sign in again. No email will be sent automatically.'))return;
   pending(true);message('Saving account…');
-  try{await api.request('/rest/v1/rpc/admin_save_account',payload);if(version!==api.getGeneration()||!allowed())return;reset();await reload();if(version===api.getGeneration()&&allowed())message('Account saved. No email was sent.');}
-  catch(error){if(version===api.getGeneration()&&allowed())message(error.message,true);}
+  let renamed=false;
+  try{
+   if(emailChanged){
+    const changed=await api.request('/functions/v1/wishlist-change-email',{account_id:editing.account_id,old_email:editing.email,new_email:payload.p_email,revision:editing.revision});
+    renamed=true;
+    payload.p_revision=editing.revision+1;
+    if(changed.passkey_warning)message(changed.message,true);
+   }
+   await api.request('/rest/v1/rpc/admin_save_account',payload);
+   if(version!==api.getGeneration()||!allowed())return;
+   reset();await reload();
+   if(version===api.getGeneration()&&allowed())message(emailChanged?'Account and email saved. No email was sent.':'Account saved. No email was sent.');
+  }catch(error){
+   if(renamed){reset();await reload();if(version===api.getGeneration()&&allowed())message('Email changed, but other account details could not be saved: '+error.message,true);}
+   else if(version===api.getGeneration()&&allowed())message(error.message,true);
+  }
   finally{if(version===api.getGeneration()&&allowed())pending(false);}
  }
  async function send(member){
