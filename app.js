@@ -225,7 +225,7 @@ async function start(){try{
  if(!connected()){authFeedback('Sign-in is unavailable because the connection settings have not loaded. Refresh and try again.');return;}
  const button=e.target.querySelector('button');button.disabled=true;button.textContent='Sending…';authFeedback('Sending your sign-in link…',false);
  try {
- await request('/auth/v1/otp?redirect_to='+encodeURIComponent(location.origin+(welcomePage?'/christmas-wishlist/':location.pathname)),{email:$('#email').value.trim()},false);
+ await request('/functions/v1/wishlist-signin',{email:$('#email').value.trim(),redirect_to:location.origin+(welcomePage?'/christmas-wishlist/':location.pathname)},false);
  authFeedback('Email sent. Check your inbox for the sign-in link.',false);
  }catch(error){authFeedback('Could not send the sign-in link: '+error.message);}
  finally{button.disabled=false;button.textContent='Send sign-in link';}
