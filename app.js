@@ -90,20 +90,31 @@ function render(){
  }
  for(const g of gifts){
   const quantity=g.quantity||1,units=viewUnits.filter(s=>s.gift_id===g.id);
-  const card=node('article',null,'card'),art=node('div',null,'art');
+  const allUnits=statuses.filter(s=>s.gift_id===g.id);
+  const limited=!g.reservation_mode||g.reservation_mode==='limited';
+  const totalPurchased=limited?allUnits.filter(s=>s.status==='purchased').length:0;
+  const totalReserved=limited?allUnits.filter(s=>s.status==='reserved').length:0;
+  const fullyPurchased=limited&&allUnits.length===quantity&&totalPurchased===quantity;
+  const fullyUnavailable=limited&&allUnits.length===quantity&&totalPurchased+totalReserved===quantity;
+  const card=node('article',null,'card'+(fullyPurchased?' card-purchased':fullyUnavailable?' card-unavailable':'')),art=node('div',null,'art');
   if(safeURL(g.image)){
    const img=node('img');img.src=safeURL(g.image);img.alt=g.title;img.loading='lazy';img.referrerPolicy='no-referrer';
    img.addEventListener('error',()=>art.replaceChildren(node('span',g.symbol||'🎁')));art.append(img);
   }else art.textContent=g.symbol||'🎁';
+  if(fullyPurchased)art.append(node('span','✓ Purchased','gift-status-banner'));
+  else if(fullyUnavailable)art.append(node('span','Reserved · Unavailable','gift-status-banner gift-status-reserved'));
   const content=node('div',null,'content');
   content.append(node('span',data.people.find(p=>p.id===g.person)?.name||'Family','tag'),node('h3',g.title));
+  if(fullyPurchased)content.append(node('p','✓ Purchased · This gift is taken care of.','gift-status-notice'));
+  else if(fullyUnavailable)content.append(node('p','Reserved · All requested items are spoken for.','gift-status-notice gift-status-pending'));
+  else if(totalPurchased>0)content.append(node('p','✓ '+totalPurchased+' purchased · '+(quantity-totalPurchased-totalReserved)+' still available','gift-status-notice gift-status-partial'));
   const pills=node('div',null,'pills');
   pills.append(node('span',g.kind==='idea'?'General idea':'Specific product'));
   if(g.match==='exact'||g.match==='similar')pills.append(node('span',g.match==='exact'?'Exact item please':'Similar is lovely'));
   if(typeof g.used==='boolean')pills.append(node('span',g.used?'Gently used welcome':'New please'));
   if(g.archived)pills.append(node('span','Archived · undo available'));content.append(pills);
   if(g.notes){content.append(node('b','Notes','notes-label'),node('p',g.notes,'gift-notes'));}
-  if(safeURL(g.url)){
+  if(safeURL(g.url)&&!fullyPurchased){
    const link=node('a','View gift ↗','product');link.href=safeURL(g.url);link.target='_blank';link.rel='noopener noreferrer';content.append(link);
   }
   if(g.reservation_mode&&g.reservation_mode!=='limited'){
@@ -133,8 +144,9 @@ function render(){
    content.append(node('p','Scroll to see each item and its actions.','unit-scroll-hint'));
   }
   for(let number=1;number<=quantity;number++){
-   const state=units.find(u=>u.unit_no===number);if(view==='mine'&&!state)continue;const row=node('div',null,'unit-row');
-   const status=state?(state.status[0].toUpperCase()+state.status.slice(1))+(state.mine?' by you':''):'Availability unavailable';
+   const state=units.find(u=>u.unit_no===number);if(view==='mine'&&!state)continue;
+   const row=node('div',null,'unit-row'+(state?.status==='purchased'?' unit-purchased':state?.status==='reserved'?' unit-reserved':''));
+   const status=state?.status==='purchased'?'✓ Purchased'+(state.mine?' by you':' · No longer available'):state?.status==='reserved'?'Reserved'+(state.mine?' by you':' · Unavailable'):state?.status==='available'?'Available':'Availability unavailable';
    row.append(node('b',(quantity>1?'Item '+number+' · ':'')+status));
    const actions=node('div',null,'actions');
    const choices=!state||state.status==='available'?[['Reserve','reserved'],['Mark purchased','purchased']]:state.mine?[...(state.status==='reserved'&&!g.archived?[['Mark purchased','purchased']]:[]),['Undo my selection','available']]:[];
@@ -142,6 +154,12 @@ function render(){
     const button=node('button',label);button.disabled=busy||refreshing||!state||!session;
     button.setAttribute('aria-label',label+' · '+g.title+(quantity>1?' · item '+number:''));
     button.addEventListener('click',()=>change(g.id,number,value));actions.append(button);
+   }
+   if(state?.status==='purchased'&&!state.mine){
+    const unavailable=node('button','✓ Purchased · Unavailable','unit-unavailable-button');unavailable.type='button';unavailable.disabled=true;
+    unavailable.setAttribute('aria-label','Item '+number+' of '+g.title+' has already been purchased');actions.append(unavailable);
+   }else if(state?.status==='reserved'&&!state.mine){
+    const unavailable=node('button','Reserved · Unavailable','unit-unavailable-button');unavailable.type='button';unavailable.disabled=true;actions.append(unavailable);
    }
    row.append(actions);const feedback=actionMessages.get(g.id+':'+number);if(feedback){const message=node('p',feedback.text,'action-feedback'+(feedback.error?' error':''));message.setAttribute('role','status');row.append(message);}selections.append(row);
   }
