@@ -139,9 +139,14 @@ async def run():
         start = {"request_id":str(uuid4()),"names":["Red","Blue","Green"],"cohosts":[str(host_b)]}
         a,b=phones
         await a.goto(origin+"/white-elephant-host.html")
+        async def upload(page,label,color):
+            encoded=await page.evaluate("""color=>{const c=document.createElement('canvas'); c.width=c.height=10;
+              const ctx=c.getContext('2d');ctx.fillStyle=color;ctx.fillRect(0,0,10,10);return c.toDataURL().split(',')[1]}""",color)
+            await page.get_by_label(label).set_input_files({'name':'gift.png','mimeType':'image/png','buffer':base64.b64decode(encoded)})
         await a.get_by_text("Add viewer accounts").click()
         await expect(a.get_by_role("button",name="Red",exact=True)).to_have_count(0)
-        await a.get_by_role("button",name="Robin Winter",exact=True).click()
+        await upload(a,"Save account photo for Robin Winter","yellow")
+        await a.get_by_role("button",name="Use saved photo for this game").click()
         await expect(a.locator("#names")).to_have_value("Robin Winter")
         await a.locator("#names").fill("Robin Winter\nBlue\nGreen")
         await a.get_by_label(str(host_b)+"@example.invalid").check()
@@ -190,10 +195,6 @@ async def run():
         except AssertionError as exc:
             raise AssertionError(f"Host RPC responses {attempts}; board: {await b.locator('main').inner_text()}") from exc
         await expect(b.locator("#turn")).to_have_text("Turn 2 of 3")
-        async def upload(page,label,color):
-            encoded=await page.evaluate("""color=>{const c=document.createElement('canvas'); c.width=c.height=10;
-              const ctx=c.getContext('2d');ctx.fillStyle=color;ctx.fillRect(0,0,10,10);return c.toDataURL().split(',')[1]}""",color)
-            await page.get_by_label(label).set_input_files({'name':'gift.png','mimeType':'image/png','buffer':base64.b64decode(encoded)})
         await a.get_by_text("Player portraits",exact=True).click()
         current=await a.locator("#player").inner_text()
         await upload(a,"Portrait for "+current,"green")
@@ -206,7 +207,7 @@ async def run():
         await expect(tv.locator('#gifts img')).not_to_have_attribute('data-photo',old)
         await expect(tv.locator('#gifts img')).to_have_js_property('naturalWidth',10)
         replacement=await tv.locator('#gifts img').first.get_attribute('data-photo')
-        assert len(set(objects.values()))==3
+        assert len(set(objects.values()))==4
         await b.get_by_role("button",name="Steal Parcel").click()
         await expect(a.locator("#pending")).to_contain_text("steal Parcel")
         await a.locator("#confirm").click()
