@@ -157,7 +157,7 @@ async def run():
         await a.locator("#guests").fill("Blue\nGreen")
         await expect(a.locator("#roster-count")).to_have_text("3 contestants selected")
         await a.get_by_text("Co-host access").click()
-        await a.locator("#choices").get_by_label("Robin Winter").check()
+        await a.locator("#choices").get_by_label(str(host_b)+"@example.invalid").check()
         await a.get_by_role("button",name="Start game").click()
         await expect(a.locator("#console")).to_be_visible()
         from urllib.parse import urlsplit, parse_qs
