@@ -217,6 +217,13 @@ async def run():
         current=await a.locator("#player").inner_text()
         await upload(a,"Portrait for "+current,"green")
         await expect(tv.locator("#number img")).to_have_js_property("naturalWidth",10)
+        assert await tv.locator("#number").evaluate("""badge => {
+            const img = badge.querySelector('img');
+            const rect = badge.getBoundingClientRect();
+            return rect.width === 384 && Math.abs(rect.width - rect.height) < 1 &&
+                img.clientWidth === badge.clientWidth && img.clientHeight === badge.clientHeight &&
+                getComputedStyle(img).objectFit === 'cover' && getComputedStyle(badge).overflow === 'hidden';
+        }""")
         await upload(a,'Take photo for Parcel','red')
         await expect(tv.locator('#gifts img')).to_have_js_property('complete',True)
         await expect(tv.locator('#gifts img')).to_have_js_property('naturalWidth',10)
