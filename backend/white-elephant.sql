@@ -149,7 +149,7 @@ begin
   end if;
   if not found then raise exception 'Host access required' using errcode='42501'; end if;
   if command = 'read' then return white_elephant.snapshot(g); end if;
-  if expected is distinct from g.revision then raise exception 'Refresh game state' using errcode='40001'; end if;
+  if expected is distinct from g.revision then raise exception 'Refresh game state' using errcode='PT409'; end if;
   case command
     when 'propose' then
       if g.paused or g.pending is not null then raise exception 'Game paused or move pending'; end if;
