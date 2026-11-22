@@ -43,6 +43,7 @@ async def run():
     async with async_playwright() as pw:
         browser = await pw.chromium.launch()
         phones = []
+        attempts = []
         sent, release = asyncio.Event(), asyncio.Event()
         for user, width in [(host_a, 375), (host_b, 390)]:
             ctx = await browser.new_context(viewport={"width":width,"height":812}, is_mobile=True, has_touch=True)
@@ -61,6 +62,10 @@ async def run():
                         sent.set()
                         await asyncio.wait_for(release.wait(), 7)
                     response = await route.fetch(url=rest + "/rpc/we_host_action")
+                    if req.post_data_json["command"] != "read":
+                        data = await response.json()
+                        attempts.append((str(host)[-4:], req.post_data_json["command"],req.post_data_json["expected"],
+                                         response.status,data.get("code"),data.get("revision")))
                     await route.fulfill(response=response)
                 return bridge
             await page.route("**/rest/v1/rpc/we_host_action", bridge_for(user))
@@ -90,7 +95,10 @@ async def run():
         await a.locator("#confirm").click()
         await expect(a.locator("#turn")).to_have_text("Turn 2 of 3")
         release.set()
-        await expect(b.locator("#status")).to_contain_text("Another host acted first")
+        try:
+            await expect(b.locator("#status")).to_contain_text("Another host acted first",timeout=15000)
+        except AssertionError as exc:
+            raise AssertionError(f"Host RPC responses {attempts}; board: {await b.locator('main').inner_text()}") from exc
         await expect(b.locator("#turn")).to_have_text("Turn 2 of 3")
         await b.get_by_role("button",name="Steal Parcel").click()
         await expect(a.locator("#pending")).to_contain_text("steal Parcel")
