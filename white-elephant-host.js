@@ -252,7 +252,7 @@
         const recipients=await request('/rest/v1/rpc/we_viewer_choices',token,{});
         if(token!==session()?.access_token)return;
         for(const viewer of recipients){
-          const name=viewer.name;
+          let name=viewer.name;
           const add=document.createElement('input');
           add.type='checkbox';add.value=name;add.onchange=syncRoster;
           const select=document.createElement('label');select.append(add,document.createTextNode(name));
@@ -277,7 +277,41 @@
             }catch(e){el('status').textContent=e.message;}
           };
           const photos=document.createElement('details'),summary=document.createElement('summary');
-          summary.textContent='Account photo';photos.append(summary,file,use);row.append(select,photos);el('recipients').append(row);
+          summary.textContent='Account photo';photos.append(summary,file,use);row.append(select,photos);
+          if(/^Family member [0-9a-f]{6}$/.test(name)){
+            const edit=document.createElement('button');
+            edit.type='button';edit.textContent='Add account name';row.insertBefore(edit,photos);
+            edit.onclick=async()=>{
+              edit.disabled=true;
+              try{
+                const auth=await getToken();
+                const members=await request('/rest/v1/rpc/editor_list_members',auth,{});
+                const member=members.find(item=>item.account_id===viewer.id && item.active);
+                if(!member || member.first_name?.trim() || member.last_name?.trim())throw Error('Account changed. Refresh the roster.');
+                const fields=document.createElement('fieldset'),legend=document.createElement('legend');
+                legend.textContent=member.email;fields.append(legend);
+                function nameField(title){
+                  const label=document.createElement('label'),input=document.createElement('input');
+                  input.type='text';input.maxLength=80;label.textContent=title;label.append(input);fields.append(label);return input;
+                }
+                const first=nameField('First name'),last=nameField('Last name'),save=document.createElement('button');
+                save.type='button';save.textContent='Save name';fields.append(save);edit.replaceWith(fields);first.focus();
+                save.onclick=async()=>{
+                  if(!first.value.trim()){first.focus();el('status').textContent='Enter a first name.';return;}
+                  save.disabled=true;
+                  const next=[first.value.trim(),last.value.trim()].filter(Boolean).join(' ');
+                  try{
+                    await request('/rest/v1/rpc/admin_save_account',await getToken(),{p_email:member.email,p_first_name:first.value.trim(),p_last_name:last.value.trim(),p_role:member.role,p_active:member.active,p_revision:member.revision});
+                    if(setupPhotos.has(name)){setupPhotos.set(next,setupPhotos.get(name));setupPhotos.delete(name);}
+                    name=next;add.value=name;select.lastChild.textContent=name;
+                    file.setAttribute('aria-label','Save account photo for '+name);
+                    fields.remove();syncRoster();el('status').textContent='Account name saved.';
+                  }catch(e){el('status').textContent=e.message;save.disabled=false;}
+                };
+              }catch(e){el('status').textContent=e.message;edit.disabled=false;}
+            };
+          }
+          el('recipients').append(row);
         }
         for(const person of choices){
           const label=document.createElement('label'), box=document.createElement('input');

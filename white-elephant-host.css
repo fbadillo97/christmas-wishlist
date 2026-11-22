@@ -21,3 +21,8 @@
 #guests {display:block;width:100%;box-sizing:border-box;margin:.45rem 0;padding:.7rem;font:inherit;border:1px solid #a9b5aa;border-radius:.5rem;}
 #setup>details {border-top:1px solid #d7dace;}
 #setup button[type=submit] {display:inline-flex;width:auto;min-height:44px;background:#214c3c;color:white;padding:.7rem 1.4rem;align-items:center;}
+
+#recipients fieldset {min-width:0;margin:.6rem 0;padding:.65rem;border:1px solid #d7dace;border-radius:.5rem;}
+#recipients legend {overflow-wrap:anywhere;}
+#recipients fieldset label {display:grid;gap:.2rem;margin-bottom:.5rem;}
+#recipients fieldset input {width:100%;box-sizing:border-box;padding:.55rem;font:inherit;}
