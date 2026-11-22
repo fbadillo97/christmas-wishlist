@@ -74,6 +74,10 @@
         return;
       }
       const b = await response.json();
+      if (b.phase === 'cancelled') {
+        reset('Game cancelled.');
+        return;
+      }
       const state=JSON.stringify([b.gifts,b.portraits]);
       if(revision!==b.revision || state!==giftState) render(b);
       giftState=state;
