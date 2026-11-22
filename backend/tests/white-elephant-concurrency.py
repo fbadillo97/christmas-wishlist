@@ -82,8 +82,8 @@ def run():
                 print("Board read returned the committed pending snapshot while A held the lock", flush=True)
             try:
                 contender.result(timeout=5)
-            except psycopg.errors.SerializationFailure as exc:
-                assert exc.sqlstate == "40001" and exc.diag.message_primary == "Refresh game state"
+            except psycopg.DatabaseError as exc:
+                assert exc.sqlstate == "PT409" and exc.diag.message_primary == "Refresh game state"
             else:
                 raise AssertionError("Both confirmations succeeded")
         final = action(reader, game, None, "read")
@@ -92,7 +92,7 @@ def run():
         assert len(gifts) == 1 and gifts["1"]["title"] == "Parcel" and gifts["1"]["owner"] == 1
         assert admin.execute("SELECT actor, revision FROM white_elephant.history WHERE game_id=%s",
                              (game,)).fetchall() == [(host_a, revision + 1)]
-        print(f"B received 40001; revision {revision} -> {final['revision']}; one gift, one history entry")
+        print(f"B received PT409; revision {revision} -> {final['revision']}; one gift, one history entry")
 
 
 if __name__ == "__main__":
