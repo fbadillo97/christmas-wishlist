@@ -64,6 +64,7 @@ def run():
         admin.execute((BACKEND / "white-elephant-cancel.sql").read_text())
         admin.execute((BACKEND / "white-elephant-rejoin.sql").read_text())
         admin.execute((BACKEND / "white-elephant-tv-announcements.sql").read_text())
+        admin.execute((BACKEND / "white-elephant-rename-gift.sql").read_text())
         host_a, host_b = uuid4(), uuid4()
         for host, role in [(host_a, "editor"), (host_b, "viewer")]:
             email = f"{host}@example.invalid"

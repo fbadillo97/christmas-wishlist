@@ -110,6 +110,21 @@
       card.className = 'gift-card';
       card.textContent = g.title + ' · ' + (name(g.owner) || 'Available') + ' · ' +
         (g.steals >= 3 ? 'Locked' : g.steals + '/3 steals');
+      const rename=document.createElement('button');
+      rename.type='button';
+      rename.className='text-button';
+      rename.textContent='Rename gift';
+      rename.setAttribute('aria-label','Rename '+g.title);
+      rename.onclick=()=>{
+        const next=window.prompt('Gift name (up to 160 characters)',g.title)?.trim();
+        if(next===undefined || next===g.title)return;
+        if(!next || Array.from(next).length>160){
+          el('status').textContent='Enter a gift name of 1 to 160 characters.';
+          return;
+        }
+        void write('rename_gift',key,next);
+      };
+      card.append(rename);
       giftPhotos.show(card,g,config,game,verifiedToken);
       for(const camera of [true,false]){
         const label=document.createElement('label'), input=document.createElement('input');
