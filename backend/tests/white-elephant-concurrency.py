@@ -47,7 +47,7 @@ def run():
             CREATE TABLE auth.users(id uuid primary key, email text, email_confirmed_at timestamptz);
             CREATE TABLE wishlist_private.wishlist_people(name text);
             INSERT INTO wishlist_private.wishlist_people VALUES ('Red');
-            CREATE TABLE wishlist_private.family_members(email text primary key, role text, active boolean,first_name text,last_name text);
+            CREATE TABLE wishlist_private.family_members(email text primary key, role text, active boolean,first_name text,last_name text,account_id uuid default gen_random_uuid());
             CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS
             $$ SELECT current_setting('request.jwt.claim.sub', true)::uuid $$;
             CREATE FUNCTION wishlist_private.member_role() RETURNS text LANGUAGE sql STABLE AS
