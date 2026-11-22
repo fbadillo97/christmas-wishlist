@@ -9,8 +9,10 @@
   <meta name="theme-color" content="#183d32">
   <title>White Elephant · TV</title>
   <link rel="stylesheet" href="white-elephant.css?v=tv-portrait-8">
+  <link rel="stylesheet" href="white-elephant-announcements.css">
   <script src="white-elephant-photos.js" defer></script>
-  <script src="white-elephant-tv.js" defer></script>
+  <script src="white-elephant-announcements.js" defer></script>
+  <script src="white-elephant-tv.js?v=announcements" defer></script>
 </head>
 <body data-view="tv" data-layout="split">
 <main class="page">
@@ -18,6 +20,7 @@
   <section class="game-board" id="board" hidden>
     <header class="board-top"><h2>White Elephant</h2><strong class="turn-pill" id="turn"></strong></header>
     <div class="spotlight"><div class="spotlight-label" id="phase"></div>
+      <section id="announcement" role="status" aria-live="polite" hidden></section>
       <div class="player-token" aria-hidden="true" id="number"></div>
       <div class="spotlight-copy"><h3 id="player"></h3><p id="instruction"></p></div>
     </div>
