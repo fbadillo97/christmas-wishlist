@@ -5,6 +5,7 @@
   const game = params.get('game'), token = params.get('token');
   const uuid = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
   let config, loading = false, revision = null;
+  let giftState='';
   function node(tag, cls, value) {
     const n = document.createElement(tag);
     n.className = cls;
@@ -39,12 +40,18 @@
       const info = node('div','gift-info');
       info.append(node('h4','gift-name',g.title),node('p','gift-owner',b.revealed[g.owner-1] || 'Available'),
         node('p','gift-stat',g.steals >= 3 ? 'Locked · 3 steals' : g.steals + '/3 steals'));
-      card.append(node('div','gift-art',g.steals >= 3 ? '🔒' : '🎁'),info);
+      const art=node('div','gift-art',g.photo?'':g.steals>=3?'🔒':'🎁');
+      giftPhotos.show(art,g,config,game,null,token);
+      card.append(art,info);
       group.append(card);
     }
     if (looping) {
       const track = node('div','gift-scroll-track is-looping');
       const copy = group.cloneNode(true);
+      [...copy.querySelectorAll('img')].forEach(img=>{
+        const gift=gifts.find(g=>g.photo===img.dataset.photo), parent=img.parentNode;
+        img.remove();giftPhotos.show(parent,gift,config,game,null,token);
+      });
       copy.setAttribute('aria-hidden','true');
       track.append(group,copy);
       grid.replaceChildren(track);
@@ -65,7 +72,9 @@
         return;
       }
       const b = await response.json();
-      if (revision !== b.revision) render(b);
+      const state=JSON.stringify(b.gifts);
+      if(revision!==b.revision || state!==giftState) render(b);
+      giftState=state;
       el('status').textContent = '';
     } catch { reset('Display disconnected. Reconnecting…'); }
     finally { loading = false; }

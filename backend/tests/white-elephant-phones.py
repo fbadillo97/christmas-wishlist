@@ -8,6 +8,8 @@ import os
 import threading
 import time
 import traceback
+import subprocess
+import atexit
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
@@ -44,15 +46,24 @@ async def run():
     sent, release = threading.Event(), threading.Event()
     peer_token = test_token(host_b)
 
+    objects, accounts = {}, {}
+
     class FixtureServer(SimpleHTTPRequestHandler):
-        def reply(self, status, body):
+        def reply(self, status, body, mime='application/json'):
             self.send_response(status)
-            self.send_header("Content-Type","application/json")
+            self.send_header("Content-Type",mime)
             self.send_header("Content-Length",str(len(body)))
             self.end_headers()
             self.wfile.write(body)
 
         def do_GET(self):
+            prefix='/storage/v1/object/authenticated/we-gift-photos/'
+            if self.path.startswith(prefix):
+                data=objects.get(self.path[len(prefix):])
+                if self.headers.get('Authorization')=='Bearer fixture-service' and data:
+                    self.reply(200,data,'image/jpeg')
+                else: self.reply(403,b'{}')
+                return
             if self.path == "/config.json":
                 self.reply(200,json.dumps({"supabaseUrl":origin,"publishableKey":"fixture"}).encode())
             elif self.path == "/auth/v1/user":
@@ -61,7 +72,27 @@ async def run():
                 super().do_GET()
 
         def do_POST(self):
-            if self.path not in ("/rest/v1/rpc/we_host_action","/rest/v1/rpc/we_pair_tv","/rest/v1/rpc/we_tv_board"):
+            if self.path=='/functions/v1/we-gift-photo':
+                auth=self.headers.get('Authorization')
+                body=self.rfile.read(int(self.headers['Content-Length']))
+                req=Request('http://127.0.0.1:8000/',data=body,headers={'Content-Type':'application/json',**({'Authorization':auth} if auth else {})})
+                try: result=urlopen(req,timeout=5)
+                except HTTPError as e: result=e
+                with result: self.reply(result.status,result.read(),result.headers.get_content_type())
+                return
+            prefix='/storage/v1/object/we-gift-photos/'
+            if self.path.startswith(prefix):
+                path=self.path[len(prefix):]
+                raw=self.rfile.read(int(self.headers['Content-Length']))
+                user=accounts[self.headers['Authorization']]
+                with psycopg.connect(os.environ['TEST_DATABASE_URL'],autocommit=True) as db:
+                    db.execute('SET ROLE authenticated')
+                    db.execute("select set_config('request.jwt.claims',%s,false)",(json.dumps({'sub':str(user)}),))
+                    db.execute("insert into storage.objects values('we-gift-photos',%s)",(path,))
+                objects[path]=raw
+                self.reply(200,b'{}')
+                return
+            if self.path not in ("/rest/v1/rpc/we_host_action","/rest/v1/rpc/we_pair_tv","/rest/v1/rpc/we_tv_board","/rest/v1/rpc/we_attach_photo"):
                 self.send_error(404)
                 return
             body = self.rfile.read(int(self.headers["Content-Length"]))
@@ -87,12 +118,16 @@ async def run():
     server = ThreadingHTTPServer(("127.0.0.1", 0), FixtureServer)
     origin = f"http://127.0.0.1:{server.server_port}"
     threading.Thread(target=server.serve_forever, daemon=True).start()
+    edge=subprocess.Popen(['deno','run','--allow-env','--allow-net','supabase/functions/we-gift-photo/index.ts'],
+                          env={**os.environ,'SUPABASE_URL':origin,'SUPABASE_ANON_KEY':'fixture','SUPABASE_SERVICE_ROLE_KEY':'fixture-service'})
+    atexit.register(edge.terminate)
     async with async_playwright() as pw:
         browser = await pw.chromium.launch()
         phones = []
         for user, width in [(host_a, 375), (host_b, 390)]:
             ctx = await browser.new_context(viewport={"width":width,"height":812}, is_mobile=True, has_touch=True)
             token = peer_token if user == host_b else test_token(user)
+            accounts["Bearer "+token]=user
             session = json.dumps({"access_token":token,"expires_at":time.time()+3600})
             await ctx.add_init_script("if (!sessionStorage.boot) {localStorage.setItem('badillo-session'," +
                                       json.dumps(session) + ");sessionStorage.boot='1'}")
@@ -150,6 +185,17 @@ async def run():
         except AssertionError as exc:
             raise AssertionError(f"Host RPC responses {attempts}; board: {await b.locator('main').inner_text()}") from exc
         await expect(b.locator("#turn")).to_have_text("Turn 2 of 3")
+        async def upload(page,label,color):
+            encoded=await page.evaluate("""color=>{const c=document.createElement('canvas'); c.width=c.height=10;
+              const ctx=c.getContext('2d');ctx.fillStyle=color;ctx.fillRect(0,0,10,10);return c.toDataURL().split(',')[1]}""",color)
+            await page.get_by_label(label).set_input_files({'name':'gift.png','mimeType':'image/png','buffer':base64.b64decode(encoded)})
+        await upload(a,'Take photo for Parcel','red')
+        await tv.wait_for_function("document.querySelector('#gifts img')?.naturalWidth>0")
+        old=await tv.locator('#gifts img').first.get_attribute('data-photo')
+        await upload(b,'Replace photo for Parcel','blue')
+        await tv.wait_for_function("id=>{const i=document.querySelector('#gifts img');return i?.naturalWidth>0 && i.dataset.photo!==id}",arg=old)
+        replacement=await tv.locator('#gifts img').first.get_attribute('data-photo')
+        assert len(set(objects.values()))==2
         await b.get_by_role("button",name="Steal Parcel").click()
         await expect(a.locator("#pending")).to_contain_text("steal Parcel")
         await a.locator("#confirm").click()
@@ -160,6 +206,7 @@ async def run():
         await expect(tv.locator("#player")).to_have_text(first_player)
         await expect(tv.locator("#gifts")).to_contain_text("1/3 steals")
         await tv.reload()
+        await tv.wait_for_function("id=>{const i=document.querySelector('#gifts img');return i?.naturalWidth>0 && i.dataset.photo===id}",arg=replacement)
         await expect(tv.locator("#turn")).to_have_text("Turn 2 of 3")
         await b.reload()
         await expect(b.locator("#player")).to_have_text(first_player)

@@ -8,6 +8,7 @@ create table white_elephant.games (
   start_payload jsonb not null,
   unique (created_by, start_request),
   hosts uuid[] not null,
+  photos jsonb not null default '{}',
   lineup text[] not null,
   state jsonb not null,
   revision bigint not null default 0,
@@ -81,10 +82,13 @@ begin
 end;
 $$;
 
+create function white_elephant.display_gifts(g white_elephant.games) returns jsonb language sql stable set search_path='' as $$
+ select coalesce(jsonb_object_agg(key,value||jsonb_build_object('photo',g.photos->(value->>'id'))),'{}') from jsonb_each(g.state->'gifts')
+$$;
 create function white_elephant.snapshot(g white_elephant.games) returns jsonb
 language sql stable set search_path='' as $$
   select jsonb_build_object('id',g.id,'revision',g.revision,'paused',g.paused,'pending',g.pending,
-    'state',g.state,'revealed',g.lineup[1:(g.state->>'turn')::integer],'player_count',cardinality(g.lineup))
+    'state',jsonb_set(g.state,'{gifts}',white_elephant.display_gifts(g)),'revealed',g.lineup[1:(g.state->>'turn')::integer],'player_count',cardinality(g.lineup))
 $$;
 
 create function white_elephant.start_game(request_id uuid, names text[], cohosts uuid[]) returns jsonb
@@ -158,6 +162,9 @@ begin
     when 'confirm' then
       if g.paused or g.pending is null then raise exception 'No confirmable move'; end if;
       next_state := white_elephant.move(g.state,cardinality(g.lineup),g.pending->>'type',g.pending->>'target');
+      if g.pending->>'type'='open' then
+        next_state:=jsonb_set(next_state,array['gifts',g.state->>'turn','id'],to_jsonb(gen_random_uuid()));
+      end if;
       insert into white_elephant.history(game_id,revision,actor,action,previous_state)
         values(game,g.revision+1,auth.uid(),g.pending,g.state);
       g.state := next_state;
@@ -213,9 +220,9 @@ language plpgsql stable security definer set search_path='' as $$
 declare board jsonb;
 begin
   select jsonb_build_object('revision', revision, 'paused', paused, 'phase', state->'phase',
-    'turn', state->'turn','active',state->'active','gifts',state->'gifts',
+    'turn', state->'turn','active',state->'active','gifts',white_elephant.display_gifts(g),
     'revealed',lineup[1:(state->>'turn')::integer], 'player_count',cardinality(lineup))
-    into board from white_elephant.games where id=game and tv_digest=sha256(uuid_send(token));
+    into board from white_elephant.games g where id=game and tv_digest=sha256(uuid_send(token));
   if not found then raise exception 'TV link is unavailable' using errcode='42501'; end if;
   return board;
 end;
@@ -229,3 +236,32 @@ revoke all on function public.we_pair_tv(uuid,boolean),white_elephant.pair_tv(uu
 grant usage on schema white_elephant to anon;
 grant execute on function public.we_pair_tv(uuid,boolean),white_elephant.pair_tv(uuid,boolean) to authenticated;
 grant execute on function public.we_tv_board(uuid,uuid),white_elephant.tv_board(uuid,uuid) to anon,authenticated;
+
+insert into storage.buckets(id,name,public,file_size_limit,allowed_mime_types)
+values ('we-gift-photos','we-gift-photos',false,524288,array['image/jpeg']);
+create function white_elephant.can_upload(path text) returns boolean language sql stable security definer set search_path='' as $$
+ select wishlist_private.is_family_member() and exists(select 1 from white_elephant.games g,jsonb_each(g.state->'gifts') item
+ where auth.uid()=any(g.hosts) and g.id::text=split_part(path,'/',1) and item.value->>'id'=split_part(path,'/',2)
+ and path ~ '^[0-9a-f-]{36}/[0-9a-f-]{36}/[0-9a-f-]{36}[.]jpg$')
+$$;
+revoke all on function white_elephant.can_upload(text) from public,anon;
+grant execute on function white_elephant.can_upload(text) to authenticated;
+create policy we_photo_insert on storage.objects for insert to authenticated
+with check(bucket_id='we-gift-photos' and white_elephant.can_upload(name));
+create function white_elephant.attach_photo(game uuid,gift uuid,previous uuid,photo uuid) returns void
+language plpgsql security definer set search_path='' as $$
+declare g white_elephant.games;
+begin
+ select * into g from white_elephant.games where id=game and auth.uid()=any(hosts) for update;
+ if not found or not wishlist_private.is_family_member() then raise exception 'Host access required' using errcode='42501'; end if;
+ if not exists(select 1 from jsonb_each(g.state->'gifts') where value->>'id'=gift::text) then raise exception 'Gift is no longer open'; end if;
+ if g.photos->>gift::text=photo::text then return; end if;
+ if (g.photos->>gift::text) is distinct from previous::text then raise exception 'Photo changed. Refresh and retry.' using errcode='PT409'; end if;
+ if not exists(select 1 from storage.objects where bucket_id='we-gift-photos' and name=game::text||'/'||gift::text||'/'||photo::text||'.jpg') then raise exception 'Upload incomplete'; end if;
+ update white_elephant.games set photos=jsonb_set(photos,array[gift::text],to_jsonb(photo)) where id=game;
+end;
+$$;
+create function public.we_attach_photo(game uuid,gift uuid,previous uuid,photo uuid) returns void language sql security invoker
+set search_path='' as $$select white_elephant.attach_photo(game,gift,previous,photo)$$;
+revoke all on function public.we_attach_photo(uuid,uuid,uuid,uuid),white_elephant.attach_photo(uuid,uuid,uuid,uuid) from public,anon;
+grant execute on function public.we_attach_photo(uuid,uuid,uuid,uuid),white_elephant.attach_photo(uuid,uuid,uuid,uuid) to authenticated;

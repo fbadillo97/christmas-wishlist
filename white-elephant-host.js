@@ -10,6 +10,7 @@
 
   function clear(message) {
     snapshot = null;
+    el('photo-status').textContent='';
     el('tv-link').removeAttribute('href');
     el('tv-link').hidden = true;
     el('tv-message').textContent = '';
@@ -29,7 +30,7 @@
         ...(token ? {Authorization:'Bearer ' + token} : {})},
       ...(body ? {body: JSON.stringify(body)} : {})
     });
-    const data = await response.json();
+    const data = await response.json().catch(()=>({}));
     if (!response.ok) {
       const error = new Error(response.status === 401 ? 'Sign in again from the family page.' :
         response.status === 403 ? 'This account does not have host access.' :
@@ -87,6 +88,16 @@
       card.className = 'gift-card';
       card.textContent = g.title + ' · ' + (name(g.owner) || 'Available') + ' · ' +
         (g.steals >= 3 ? 'Locked' : g.steals + '/3 steals');
+      giftPhotos.show(card,g,config,game,verifiedToken);
+      for(const camera of [true,false]){
+        const label=document.createElement('label'), input=document.createElement('input');
+        input.type='file'; input.accept='image/*';
+        if(camera)input.setAttribute('capture','environment');
+        label.textContent=camera?(g.photo?'Retake photo':'Take photo'):(g.photo?'Replace photo':'Choose photo');
+        input.setAttribute('aria-label',label.textContent+' for '+g.title);
+        input.onchange=()=>{if(input.files[0]) upload(g,input.files[0]);input.value='';};
+        label.append(input);card.append(label);
+      }
       el('gifts').append(card);
       if (!canPropose || phase === 'done') continue;
       if (phase === 'replacement' && g.owner === null) addMove('Take ' + g.title,'take',key);
@@ -109,6 +120,23 @@
     el('controls').disabled = writing;
   }
 
+  async function upload(g,file){
+    const auth=await getToken().catch(()=>null);
+    if(!auth || !snapshot)return;
+    el('photo-status').textContent='Uploading photo…';
+    try {
+      const blob=await giftPhotos.compress(file), photo=crypto.randomUUID();
+      if(session()?.access_token!==auth)return;
+      const result=await fetch(config.supabaseUrl+'/storage/v1/object/we-gift-photos/'+game+'/'+g.id+'/'+photo+'.jpg',{
+        method:'POST',headers:{apikey:config.publishableKey,Authorization:'Bearer '+auth,'Content-Type':'image/jpeg'},body:blob,signal:AbortSignal.timeout(30000)});
+      if(!result.ok)throw Error('Upload failed. Try again.');
+      if(session()?.access_token!==auth)return;
+      await request('/rest/v1/rpc/we_attach_photo',auth,{game,gift:g.id,photo,previous:g.photo||null});
+      if(snapshot && session()?.access_token===auth)el('photo-status').textContent='Photo saved.';
+      void read();
+    } catch(e){if(snapshot && session()?.access_token===auth)el('photo-status').textContent=e.message;}
+  }
+
   async function rpc(body, version) {
     const token = await getToken();
     if (version !== generation) throw stale();
@@ -129,7 +157,7 @@
     try {
       const latest = await rpc({expected:null,command:'read'},version);
       if (version !== generation || writing) return;
-      if (!snapshot || latest.revision > snapshot.revision) render(latest);
+      if (!snapshot || latest.revision > snapshot.revision || JSON.stringify(latest.state.gifts)!==JSON.stringify(snapshot.state.gifts)) render(latest);
       el('status').textContent = feedback || 'Connected';
     } catch (e) {
       if (version === generation && !writing) clear(e.message || 'Disconnected. Reconnecting…');

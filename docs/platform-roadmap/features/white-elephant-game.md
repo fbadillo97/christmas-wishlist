@@ -149,3 +149,7 @@ Open `white-elephant-host.html?game=<game UUID>` from the same site as family si
 On the host console, expand **TV display**, choose **Create TV link**, and open or copy that link to the room display. Each game supports one current link. Creating another rotates the pairing, and **Disconnect TV** revokes it. A link remains valid until rotated or revoked, including after the game ends so the final board can stay visible. Anyone with the link can view that game's board.
 
 The display polls every two seconds and reads committed player, turn, gift, ownership and lock data. It uses an event-scoped token in the URL fragment and sends it only in the TV RPC request body. The database stores its digest. The TV does not sign in or receive pending moves, host identities, or unrevealed names. On loss of access it clears the board.
+
+### Mid-game photos
+
+Once an opening is confirmed either host can take or choose a picture, or replace it later. The private bucket holds compressed JPEGs. The TV reads only the current photo through the paired game. Before release apply the migration and deploy `we-gift-photo` with `--no-verify-jwt` so paired displays can reach its game-scoped authorization check. Replaced and unattached objects remain private pending event cleanup.
