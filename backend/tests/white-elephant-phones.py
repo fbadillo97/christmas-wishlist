@@ -307,6 +307,23 @@ async def run():
             await expect(page.locator("#status")).to_have_text("Game cancelled.")
         await expect(b.locator("#console")).to_be_hidden()
         await expect(tv.locator("#board")).to_be_hidden()
+        await a.locator("#guests").fill("Amber\nSilver\nGold")
+        await a.get_by_role("button",name="Start game").click()
+        await expect(a.locator("#console")).to_be_visible()
+        removable=parse_qs(urlsplit(a.url).query)["game"][0]
+        await a.goto(origin+"/white-elephant-host.html")
+        row=a.locator("#resume-list p").filter(has=a.locator('a[href="?game='+removable+'"]'))
+        async with a.expect_event("dialog") as dismissed:
+            await row.get_by_role("button",name="Delete game").click()
+        await (await dismissed.value).dismiss()
+        await expect(row.get_by_role("button")).to_be_enabled()
+        async with a.expect_event("dialog") as accepted:
+            await row.get_by_role("button",name="Delete game").click()
+        await (await accepted.value).accept()
+        await expect(row).to_have_count(0)
+        await a.reload()
+        await expect(a.locator("#setup")).to_be_visible()
+        await expect(row).to_have_count(0)
         await browser.close()
     server.shutdown()
 
