@@ -26,6 +26,8 @@
       b.phase === 'done' ? 'Final gifts' : 'Final exchange';
     el('number').textContent = b.active ? 'P' + b.active : '✓';
     el('player').textContent = b.revealed[b.active - 1] || 'Game complete';
+    const portrait=b.portraits?.[0];
+    if(portrait?.photo){el('number').replaceChildren();giftPhotos.show(el('number'),portrait,config,game,null,token);}
     el('instruction').textContent = b.paused ? 'Waiting for the hosts to resume.' :
       ({regular:'Open a gift or steal an eligible gift.',final:'Keep your gift or make a final steal.',
         replacement:'Take the available gift or steal an eligible gift.',done:'Everyone has a gift.'})[b.phase];
@@ -72,7 +74,7 @@
         return;
       }
       const b = await response.json();
-      const state=JSON.stringify(b.gifts);
+      const state=JSON.stringify([b.gifts,b.portraits]);
       if(revision!==b.revision || state!==giftState) render(b);
       giftState=state;
       el('status').textContent = '';

@@ -11,7 +11,7 @@
   function clear(message) {
     snapshot = null;
     el('setup').hidden=true;
-    el('choices').replaceChildren();
+    el('choices').replaceChildren();el('recipients').replaceChildren();el('portraits').replaceChildren();
     el('names').value='';
     el('photo-status').textContent='';
     el('tv-link').removeAttribute('href');
@@ -74,6 +74,15 @@
       'Take the available gift or steal an eligible gift.' : phase === 'final' ?
       'Keep your gift or start the final exchange.' : phase === 'done' ?
       'Everyone has a gift.' : 'Open a wrapped gift or steal an eligible gift.';
+    el('portraits').replaceChildren();
+    for(const person of s.portraits || []){
+      const row=document.createElement('div'),label=document.createElement('label'),input=document.createElement('input');
+      label.textContent=person.title;input.type='file';input.accept='image/*';
+      input.setAttribute('aria-label','Portrait for '+person.title);
+      input.onchange=()=>{if(input.files[0])upload(person,input.files[0]);};
+      label.append(input);row.append(label);giftPhotos.show(row,person,config,game,verifiedToken);
+      el('portraits').append(row);
+    }
     el('gifts').replaceChildren();
     el('moves').replaceChildren();
     const canPropose = !s.paused && !s.pending;
@@ -160,7 +169,7 @@
     try {
       const latest = await rpc({expected:null,command:'read'},version);
       if (version !== generation || writing) return;
-      if (!snapshot || latest.revision > snapshot.revision || JSON.stringify(latest.state.gifts)!==JSON.stringify(snapshot.state.gifts)) render(latest);
+      if (!snapshot || latest.revision > snapshot.revision || JSON.stringify(latest.state.gifts)!==JSON.stringify(snapshot.state.gifts) || JSON.stringify(latest.portraits)!==JSON.stringify(snapshot.portraits)) render(latest);
       el('status').textContent = feedback || 'Connected';
     } catch (e) {
       if (version === generation && !writing) clear(e.message || 'Disconnected. Reconnecting…');
@@ -237,6 +246,14 @@
         const token=await getToken();
         const choices=await request('/rest/v1/rpc/we_cohost_choices',token,{});
         if(token!==session()?.access_token)return;
+        const recipients=await request('/rest/v1/rpc/we_recipient_names',token,{});
+        if(token!==session()?.access_token)return;
+        for(const name of recipients){
+          const add=document.createElement('button');add.type='button';add.textContent=name;
+          add.onclick=()=>{const names=el('names');const list=names.value.split('\n').map(n=>n.trim()).filter(Boolean);
+            if(!list.some(n=>n.toLowerCase()===name.toLowerCase()))names.value=[...list,name].join('\n');};
+          el('recipients').append(add);
+        }
         for(const person of choices){
           const label=document.createElement('label'), box=document.createElement('input');
           box.type='checkbox'; box.value=person.account;
