@@ -282,7 +282,8 @@
         for(const person of choices){
           const label=document.createElement('label'), box=document.createElement('input');
           box.type='checkbox'; box.value=person.account;
-          label.append(box,document.createTextNode(person.email));el('choices').append(label);
+          const member=recipients.find(candidate=>candidate.id===person.account);
+          label.append(box,document.createTextNode(member?.name || person.email));el('choices').append(label);
         }
         el('setup').hidden=false;el('status').textContent='';
       } catch(e){clear(e.message);}
