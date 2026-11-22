@@ -177,6 +177,12 @@ async def run():
         for page in phones:
             await expect(page.locator("#status")).to_have_text("Connected")
             assert await page.evaluate("document.documentElement.scrollWidth <= innerWidth")
+        for button_id in ["open","pause","share-host","cancel-game"]:
+            assert await a.locator("#"+button_id).evaluate("""button => {
+                const label = document.createRange();
+                label.selectNodeContents(button);
+                return label.getClientRects().length === 1 && button.offsetHeight >= 44;
+            }""")
         first_player = await a.locator("#player").inner_text()
         await a.get_by_text("TV display", exact=True).click()
         await a.locator("#pair-tv").click()
