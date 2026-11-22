@@ -253,9 +253,9 @@
         if(token!==session()?.access_token)return;
         for(const viewer of recipients){
           const name=viewer.name;
-          const add=document.createElement('button');add.type='button';add.textContent=name;
-          add.onclick=()=>{const names=el('names');const list=names.value.split('\n').map(n=>n.trim()).filter(Boolean);
-            if(!list.some(n=>n.toLowerCase()===name.toLowerCase()))names.value=[...list,name].join('\n');editPortraits();};
+          const add=document.createElement('input');
+          add.type='checkbox';add.value=name;add.onchange=syncRoster;
+          const select=document.createElement('label');select.append(add,document.createTextNode(name));
           const row=document.createElement('div'),label=document.createElement('label'),file=document.createElement('input');
           const use=document.createElement('button');use.type='button';use.textContent='Use saved photo for this game';use.hidden=!viewer.has_photo;
           file.type='file';file.accept='image/*';label.textContent='Account photo';file.setAttribute('aria-label','Save account photo for '+name);
@@ -272,16 +272,17 @@
             try{
               const auth=await getToken(),encoded=await request('/rest/v1/rpc/we_account_portrait',auth,{id:viewer.id});
               if(!encoded || session()?.access_token!==auth)return;
-              add.click();setupPhotos.set(name,new Blob([Uint8Array.from(atob(encoded),c=>c.charCodeAt(0))],{type:'image/jpeg'}));
+              add.checked=true;syncRoster();setupPhotos.set(name,new Blob([Uint8Array.from(atob(encoded),c=>c.charCodeAt(0))],{type:'image/jpeg'}));
               editPortraits();el('status').textContent='Portrait selected for '+name+'.';
             }catch(e){el('status').textContent=e.message;}
           };
-          label.append(file);row.append(add,label,use);el('recipients').append(row);
+          const photos=document.createElement('details'),summary=document.createElement('summary');
+          summary.textContent='Account photo';photos.append(summary,file,use);row.append(select,photos);el('recipients').append(row);
         }
         for(const person of choices){
           const label=document.createElement('label'), box=document.createElement('input');
           box.type='checkbox'; box.value=person.account;
-          label.append(box,document.createTextNode(person.email));el('choices').append(label,document.createElement('br'));
+          label.append(box,document.createTextNode(person.email));el('choices').append(label);
         }
         el('setup').hidden=false;el('status').textContent='';
       } catch(e){clear(e.message);}
@@ -311,11 +312,19 @@
     }
   }
   el('setup-portraits').ontoggle=()=>{if(el('setup-portraits').open)editPortraits();};
-  el('names').oninput=editPortraits;
+  function syncRoster(){
+    const selected=[...el('recipients').querySelectorAll(':checked')].map(box=>box.value);
+    const guests=el('guests').value.split('\n').map(name=>name.trim().replace(/\s+/g,' ')).filter(Boolean);
+    const roster=[...selected,...guests];
+    el('names').value=roster.join('\n');
+    el('roster-count').textContent=roster.length+' contestant'+(roster.length===1?'':'s')+' selected';
+    editPortraits();
+  }
+  el('guests').oninput=syncRoster;
   let attempt;
   el('setup').onsubmit=async event=>{
     event.preventDefault();
-    const button=el('setup').querySelector('button');
+    const button=el('setup').querySelector('[type=submit]');
     if(button.disabled)return;
     button.disabled=true;
     try {
