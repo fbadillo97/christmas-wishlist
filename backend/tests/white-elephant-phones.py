@@ -206,8 +206,15 @@ async def run():
         assert private.status in (401,403)
         initial_board = await guest.post("/rpc/we_tv_board",data={"game":game,"token":pairing})
         data = await initial_board.json()
-        assert set(data)=={"portraits","revision","paused","phase","turn","active","gifts","revealed","player_count"}
+        assert set(data)=={"last_move","portraits","revision","paused","phase","turn","active","gifts","revealed","player_count"}
         assert data["revealed"]==[first_player]
+        await a.locator("#open").click()
+        await expect(b.locator("#confirm")).to_be_visible()
+        await expect(tv.locator("#announcement")).to_be_hidden()
+        await b.locator("#cancel").click()
+        cancelled_board=await guest.post("/rpc/we_tv_board",data={"game":game,"token":pairing})
+        assert (await cancelled_board.json())["last_move"] is None
+        await expect(a.locator("#open")).to_be_visible()
         await a.locator("#title").fill("Parcel")
         await a.locator("#open").click()
         for page in phones:
@@ -225,6 +232,8 @@ async def run():
         await expect(b.locator("#turn")).to_have_text("Turn 2 of 3")
         await a.get_by_text("Player portraits",exact=True).click()
         current=await a.locator("#player").inner_text()
+        await expect(tv.locator("#announcement")).to_have_attribute("data-kind","open")
+        await expect(tv.locator("#announcement")).to_contain_text("A New Gift Is Being Opened!")
         await upload(a,"Portrait for "+current,"green")
         await expect(tv.locator("#number img")).to_have_js_property("naturalWidth",10)
         assert await tv.locator("#number").evaluate("""badge => {
@@ -264,6 +273,8 @@ async def run():
             await expect(page.locator("#gifts")).to_contain_text("1/3 steals")
             await expect(page.get_by_role("button",name="Player Chose to Steal Parcel")).to_have_count(0)
         await expect(tv.locator("#player")).to_have_text(first_player)
+        await expect(tv.locator("#announcement")).to_have_attribute("data-kind","steal")
+        await expect(tv.locator("#announcement")).to_contain_text("Stole Parcel!")
         await expect(tv.locator("#gifts")).to_contain_text("1/3 steals")
         await tv.reload()
         await expect(tv.locator('#gifts img')).to_have_attribute('data-photo',replacement)
@@ -286,6 +297,18 @@ async def run():
         await a.get_by_role("button",name="Player Chose to Steal Parcel").click()
         await expect(b.locator("#pending")).to_have_text("Waiting to confirm that the player stole Parcel.")
         await b.locator("#confirm").click()
+        await expect(tv.locator("#announcement")).to_have_attribute("data-kind","lock")
+        await expect(tv.locator("#announcement")).to_contain_text("LOCKED IN WITH")
+        await tv.set_viewport_size({"width":3840,"height":2160})
+        await tv.emulate_media(reduced_motion="reduce")
+        assert await tv.locator("#announcement").evaluate("""panel => {
+            const bounds=panel.getBoundingClientRect();
+            const gift=panel.querySelector('.show-parcel').getBoundingClientRect();
+            const board=document.querySelector('#gifts').getBoundingClientRect();
+            return gift.width>50 && gift.height>50 && gift.left>=bounds.left &&
+                gift.right<=bounds.right && gift.top>=bounds.top && gift.bottom<=bounds.bottom &&
+                bounds.right<=board.left && getComputedStyle(panel.querySelector('.show-padlock')).animationName==='none';
+        }""")
         await expect(tv.locator("#gifts")).to_contain_text("Locked · 3 steals")
         await expect(a.locator("#gifts")).to_contain_text("Locked")
         await a.get_by_role("button",name="Take Gift 2").click()

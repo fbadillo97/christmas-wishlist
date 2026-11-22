@@ -13,6 +13,7 @@
     return n;
   }
   function reset(message) {
+    tvAnnouncements.clear();
     revision = null;
     el('board').hidden = true;
     for (const id of ['turn','phase','number','player','instruction','count','gifts','wrapped']) el(id).replaceChildren();
@@ -44,6 +45,7 @@
         node('p','gift-stat',g.steals >= 3 ? 'Locked · 3 steals' : g.steals + '/3 steals'));
       const art=node('div','gift-art',g.photo?'':g.steals>=3?'🔒':'🎁');
       giftPhotos.show(art,g,config,game,null,token);
+      card.dataset.gift=g.id;
       card.append(art,info);
       group.append(card);
     }
@@ -79,7 +81,9 @@
         return;
       }
       const state=JSON.stringify([b.gifts,b.portraits]);
+      tvAnnouncements.update(b,revision,(parent,gift)=>giftPhotos.show(parent,gift,config,game,null,token));
       if(revision!==b.revision || state!==giftState) render(b);
+      tvAnnouncements.maskOpening();
       giftState=state;
       el('status').textContent = '';
     } catch { reset('Display disconnected. Reconnecting…'); }
@@ -88,7 +92,7 @@
   if (uuid.test(game || '') && uuid.test(token || '')) {
     refresh();
     setInterval(refresh,2000);
-    document.addEventListener('visibilitychange',refresh);
+    document.addEventListener('visibilitychange',()=>{if(document.hidden)reset('');else refresh();});
     window.addEventListener('online',refresh);
   } else reset('Open a TV link from the host console.');
 })();

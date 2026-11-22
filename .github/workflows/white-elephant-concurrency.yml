@@ -8,6 +8,8 @@ on:
       - 'white-elephant-host.*'
       - 'white-elephant-tv.*'
       - 'white-elephant-photos.js'
+      - 'white-elephant-announcements.*'
+      - 'backend/white-elephant-tv-announcements.sql'
       - 'supabase/functions/we-gift-photo/**'
       - 'white-elephant.css'
       - '.github/workflows/white-elephant-concurrency.yml'
