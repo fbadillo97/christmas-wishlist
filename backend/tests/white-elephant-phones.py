@@ -7,6 +7,7 @@ import json
 import os
 import threading
 import time
+import traceback
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from uuid import uuid4
 
@@ -121,4 +122,9 @@ async def run():
 
 
 if __name__ == "__main__":
-    asyncio.run(run())
+    try:
+        asyncio.run(run())
+    except Exception:
+        detail = traceback.format_exc().replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+        print("::error title=Mobile host integration::" + detail, flush=True)
+        raise
