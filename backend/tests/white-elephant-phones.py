@@ -94,7 +94,7 @@ async def run():
                 objects[path]=raw
                 self.reply(200,b'{}')
                 return
-            if self.path not in ("/rest/v1/rpc/we_host_action","/rest/v1/rpc/we_pair_tv","/rest/v1/rpc/we_tv_board","/rest/v1/rpc/we_attach_photo","/rest/v1/rpc/we_start_game","/rest/v1/rpc/we_cohost_choices","/rest/v1/rpc/we_viewer_player_names","/rest/v1/rpc/we_viewer_choices","/rest/v1/rpc/we_account_portrait"):
+            if self.path not in ("/rest/v1/rpc/we_active_host_games","/rest/v1/rpc/we_host_action","/rest/v1/rpc/we_pair_tv","/rest/v1/rpc/we_tv_board","/rest/v1/rpc/we_attach_photo","/rest/v1/rpc/we_start_game","/rest/v1/rpc/we_cohost_choices","/rest/v1/rpc/we_viewer_player_names","/rest/v1/rpc/we_viewer_choices","/rest/v1/rpc/we_account_portrait"):
                 self.send_error(404)
                 return
             body = self.rfile.read(int(self.headers["Content-Length"]))
@@ -173,7 +173,9 @@ async def run():
         from urllib.parse import urlsplit, parse_qs
         url=a.url
         game=parse_qs(urlsplit(url).query)["game"][0]
-        await b.goto(url)
+        await b.goto(origin+"/white-elephant-host.html")
+        await b.locator('#resume-list a[href="?game='+game+'"]').click()
+        assert b.url == url
         for page in phones:
             await expect(page.locator("#status")).to_have_text("Connected")
             assert await page.evaluate("document.documentElement.scrollWidth <= innerWidth")

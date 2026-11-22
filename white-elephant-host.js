@@ -10,6 +10,8 @@
 
   function clear(message) {
     snapshot = null;
+    el('resume').hidden=true;
+    el('resume-list').replaceChildren();
     el('return-setup').hidden = true;
     el('setup').hidden=true;
     el('choices').replaceChildren();el('recipients').replaceChildren();el('portraits').replaceChildren();
@@ -272,6 +274,17 @@
       try {
         config=await (await fetch('./config.json',{cache:'no-store'})).json();
         const token=await getToken();
+        const games=await request('/rest/v1/rpc/we_active_host_games',token,{});
+        if(token!==session()?.access_token)return;
+        for(const active of games){
+          const row=document.createElement('p'),link=document.createElement('a');
+          link.href='?game='+encodeURIComponent(active.id);
+          link.textContent='Rejoin game';
+          row.append(link,document.createTextNode(' · '+(active.paused?'Paused · ':'')+
+            'Turn '+active.turn_no+' of '+active.player_count+' · '+active.player+' · '+active.id.slice(0,6)));
+          el('resume-list').append(row);
+        }
+        el('resume').hidden=!games.length;
         const choices=await request('/rest/v1/rpc/we_cohost_choices',token,{});
         if(token!==session()?.access_token)return;
         const recipients=await request('/rest/v1/rpc/we_viewer_choices',token,{});
@@ -344,7 +357,10 @@
           label.append(box,document.createTextNode(person.email));el('choices').append(label);
         }
         el('setup').hidden=false;el('status').textContent='';
-      } catch(e){clear(e.message);}
+      } catch(e){
+        if(el('resume').hidden)clear(e.message);
+        else el('status').textContent='Choose a game to resume.';
+      }
       return;
     }
     if (!/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(game || '')) {
