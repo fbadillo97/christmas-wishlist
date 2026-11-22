@@ -24,7 +24,7 @@
     el('turn').textContent = 'Turn ' + b.turn + ' of ' + b.player_count;
     el('phase').textContent = b.paused ? 'Paused' : b.phase === 'regular' ? 'Now playing' :
       b.phase === 'done' ? 'Final gifts' : 'Final exchange';
-    el('number').textContent = b.active ? 'P' + b.active : '✓';
+    el('number').textContent = b.active ? b.revealed[b.active-1].split(/\s+/).slice(0,2).map(n=>Array.from(n)[0]).join('').toUpperCase() : '✓';
     el('player').textContent = b.revealed[b.active - 1] || 'Game complete';
     const portrait=b.portraits?.[0];
     if(portrait?.photo){el('number').replaceChildren();giftPhotos.show(el('number'),portrait,config,game,null,token);}
