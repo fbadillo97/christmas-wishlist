@@ -35,10 +35,17 @@ function setup({signedIn=true,approved=true,role='viewer'}={}){
  w.eval(editor);w.eval(app);return dom;
 }
 let d=setup();await tick();await tick();let w=d.window;
+const picker = w.document.querySelector('#mobile-person');
+picker.value = 'p';
+picker.dispatchEvent(new w.Event('change'));
+assert.match(w.document.querySelector('#list-title').textContent, /Test recipient/);
+assert.equal(w.document.querySelector('#people button[aria-pressed=true]').textContent, '* Test recipient');
+w.document.querySelector('#people button').click();
+assert.equal(picker.value, 'all');
 let cards=[...w.document.querySelectorAll('.card')];
 assert.equal(cards.length,3);assert.match(cards[0].textContent,/Open to everyone/);assert.doesNotMatch(cards[0].textContent,/wanted|reserved|unavailable/i);
 assert.equal(cards[0].querySelector('button').textContent,'I’m getting something');assert.equal(cards[0].querySelector('button').disabled,false);
-assert.equal(cards[1].querySelectorAll('button').length,0);assert.equal(cards[2].querySelectorAll('button').length,0);
+assert.equal(cards[1].querySelectorAll('button:enabled').length,0);assert.match(cards[1].querySelector('button:disabled').textContent,/Reserved/);assert.equal(cards[2].querySelectorAll('button').length,0);
 cards[0].querySelector('button').click();assert.equal(w.document.querySelector('#idea-dialog').open,true);
 w.document.querySelector('#idea-note').value='<img src=x onerror=alert(1)> private note';
 await w.document.querySelector('#idea-form').onsubmit({preventDefault(){}});await tick();
@@ -49,7 +56,7 @@ assert.match(w.document.querySelector('.card').textContent,/You purchased someth
 w.document.querySelector('#filter').value='available';w.document.querySelector('#filter').onchange();assert.equal(w.document.querySelectorAll('.card').length,2);
 w.document.querySelector('#filter').value='all';w.document.querySelector('#filter').onchange();
 w.document.querySelector('.card button').click();w.document.querySelector('#idea-note').value='unsaved private draft';
-await w.document.querySelector('#logout').onclick();assert.equal(w.document.querySelector('#idea-note').value,'');assert.equal(w.document.querySelector('#idea-dialog').open,false);assert.equal(w.document.querySelectorAll('.card').length,0);d.window.close();
+await w.document.querySelector('#logout').onclick();assert.equal(picker.options.length,0);assert.equal(w.document.querySelector('#idea-note').value,'');assert.equal(w.document.querySelector('#idea-dialog').open,false);assert.equal(w.document.querySelectorAll('.card').length,0);d.window.close();
 for(const params of [{signedIn:false},{approved:false}]){d=setup(params);await tick();await tick();assert.equal(d.window.document.querySelectorAll('.card').length,0);d.window.close();}
 units=[];d=setup({role:'editor'});await tick();await tick();w=d.window;w.document.querySelector('#add-gift').click();assert.equal(w.document.querySelector('#gift-reservation_mode').value,'limited');
 w.document.querySelector('#gift-kind').value='idea';w.document.querySelector('#gift-kind').onchange();assert.equal(w.document.querySelector('#gift-reservation_mode').value,'open-ended');assert.equal(w.document.querySelector('#quantity-field').hidden,true);d.window.close();
