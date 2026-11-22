@@ -3,6 +3,10 @@ create schema white_elephant;
 revoke all on schema white_elephant from public, anon, authenticated;
 create table white_elephant.games (
   id uuid primary key default gen_random_uuid(),
+  created_by uuid not null,
+  start_request uuid not null,
+  start_payload jsonb not null,
+  unique (created_by, start_request),
   hosts uuid[] not null,
   lineup text[] not null,
   state jsonb not null,
@@ -83,21 +87,39 @@ language sql stable set search_path='' as $$
     'state',g.state,'revealed',g.lineup[1:(g.state->>'turn')::integer],'player_count',cardinality(g.lineup))
 $$;
 
-create function white_elephant.start_game(names text[], cohosts uuid[]) returns jsonb
+create function white_elephant.start_game(request_id uuid, names text[], cohosts uuid[]) returns jsonb
 language plpgsql security definer set search_path='' as $$
-declare g white_elephant.games;
+declare
+  g white_elephant.games;
+  roster text[];
+  host_ids uuid[];
+  payload jsonb;
 begin
   if coalesce(wishlist_private.member_role(),'') not in ('editor','owner') then
     raise exception 'Editor access required' using errcode='42501';
   end if;
-  if cardinality(names) is null or cardinality(names) not between 2 and 100
-     or exists(select 1 from unnest(names) n where n is null or length(btrim(n)) not between 1 and 80)
+  if request_id is null then raise exception 'Start request ID required'; end if;
+  select array_agg(btrim(regexp_replace(n,'[[:space:]]+',' ','g')) order by position)
+    into roster from unnest(names) with ordinality as entries(n, position);
+  if cardinality(roster) is null or cardinality(roster) not between 2 and 100
+     or exists(select 1 from unnest(roster) n where n is null or length(n) not between 1 and 80)
      then raise exception 'Supply 2 to 100 player names of 1 to 80 characters'; end if;
-  insert into white_elephant.games(hosts,lineup,state) values (
-    array_append(coalesce(cohosts,'{}'),auth.uid()),
-    array(select btrim(n) from unnest(names) n order by random()),
-    '{"phase":"regular","turn":1,"active":1,"gifts":{}}'
-  ) returning * into g;
+  if exists(select 1 from unnest(roster) n group by lower(n) having count(*) > 1)
+     then raise exception 'Each player needs a distinct display name'; end if;
+
+  select array_agg(distinct h order by h) into host_ids
+    from unnest(array_append(coalesce(cohosts,'{}'),auth.uid())) h where h is not null;
+  payload := jsonb_build_object('names',roster,'hosts',host_ids);
+  insert into white_elephant.games(created_by,start_request,start_payload,hosts,lineup,state)
+    values(auth.uid(),request_id,payload,host_ids,
+      array(select n from unnest(roster) n order by random()),
+      '{"phase":"regular","turn":1,"active":1,"gifts":{}}')
+    on conflict (created_by,start_request) do nothing returning * into g;
+  if not found then
+    select * into strict g from white_elephant.games
+      where created_by=auth.uid() and start_request=request_id;
+    if g.start_payload <> payload then raise exception 'Start request ID reused with different settings'; end if;
+  end if;
   return white_elephant.snapshot(g);
 end;
 $$;
@@ -107,7 +129,11 @@ returns jsonb language plpgsql security definer set search_path='' as $$
 declare g white_elephant.games; next_state jsonb; last_move white_elephant.history;
 begin
   if not wishlist_private.is_family_member() then raise exception 'Host access required' using errcode='42501'; end if;
-  select * into g from white_elephant.games where id=game and auth.uid()=any(hosts) for update;
+  if command = 'read' then
+    select * into g from white_elephant.games where id=game and auth.uid()=any(hosts);
+  else
+    select * into g from white_elephant.games where id=game and auth.uid()=any(hosts) for update;
+  end if;
   if not found then raise exception 'Host access required' using errcode='42501'; end if;
   if command = 'read' then return white_elephant.snapshot(g); end if;
   if expected is distinct from g.revision then raise exception 'Refresh game state' using errcode='40001'; end if;
@@ -143,12 +169,12 @@ begin
 end;
 $$;
 
-create function public.we_start_game(names text[], cohosts uuid[] default '{}') returns jsonb
-language sql security invoker set search_path='' as $$select white_elephant.start_game(names,cohosts)$$;
+create function public.we_start_game(request_id uuid, names text[], cohosts uuid[] default '{}') returns jsonb
+language sql security invoker set search_path='' as $$select white_elephant.start_game(request_id,names,cohosts)$$;
 create function public.we_host_action(game uuid, expected bigint, command text, move_type text default null, target text default null)
 returns jsonb language sql security invoker set search_path='' as $$select white_elephant.host_action(game,expected,command,move_type,target)$$;
 revoke all on all functions in schema white_elephant from public, anon, authenticated;
-revoke all on function public.we_start_game(text[],uuid[]), public.we_host_action(uuid,bigint,text,text,text) from public, anon, authenticated;
+revoke all on function public.we_start_game(uuid,text[],uuid[]), public.we_host_action(uuid,bigint,text,text,text) from public, anon, authenticated;
 grant usage on schema white_elephant to authenticated;
-grant execute on function white_elephant.start_game(text[],uuid[]), white_elephant.host_action(uuid,bigint,text,text,text),
-  public.we_start_game(text[],uuid[]), public.we_host_action(uuid,bigint,text,text,text) to authenticated;
+grant execute on function white_elephant.start_game(uuid,text[],uuid[]), white_elephant.host_action(uuid,bigint,text,text,text),
+  public.we_start_game(uuid,text[],uuid[]), public.we_host_action(uuid,bigint,text,text,text) to authenticated;
