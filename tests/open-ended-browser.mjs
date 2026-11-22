@@ -47,6 +47,12 @@ for(const width of [320,375,390,430,768,1280]){
   const content=await fs.readFile(new URL(file,base));await route.fulfill({body:content,contentType:file.endsWith('.js')?'application/javascript':file.endsWith('.css')?'text/css':'text/html'});
  });
  await page.goto('https://wishlist.test/');await page.getByText('Open to everyone · Your selection never limits anyone else.').waitFor();
+ const search=page.getByRole('searchbox',{name:'Search gifts'});
+ await search.fill('prdouct');
+ assert.deepEqual(await page.locator('#gifts h3').allTextContents(),[product.title]);
+ assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+ await page.getByRole('button',{name:'Clear search'}).click();
+ assert.equal(await search.inputValue(),'');
  await page.getByRole('button',{name:selection?'Edit my private selection':'I’m getting something',exact:true}).click();
  await page.getByLabel('What are you planning to get? (optional)').fill('Synthetic private plan');
  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'Horizontal overflow');
