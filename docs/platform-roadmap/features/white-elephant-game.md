@@ -1,7 +1,7 @@
 # White Elephant — Interactive Game
 
 - **Feature ID:** `white-elephant-game`
-- **State:** V1 scope agreed; mock-only visual prototype prepared; live game implementation not started.
+- **State:** V1 scope agreed; mock-only visual prototype prepared; backend rules engine staged for integration.
 - **Initial planning:** Phase 4 · Medium priority · High complexity (assumption).
 - **Companion specification:** [White Elephant — Event Setup](white-elephant-setup.md) (`white-elephant-setup`).
 
@@ -47,7 +47,7 @@ Gifts are selected from a single wrapped pile. They do not need labels or photos
 
 The TV keeps the current player prominent and shows a compact overview of opened gifts, their owners, and lock status. Design for people viewing from across the room. A steal temporarily highlights the people and gift involved, then returns to the board.
 
-A host records the physical move as a pending action and confirms it. The server validates and saves the action atomically; other hosts and the TV then receive the updated state. Only one game action may be pending at a time. If a player is stolen from, the game follows the agreed replacement-turn/steal-chain rule once that rule is finalized.
+A host records the physical move as a pending action and confirms it. The server validates and saves the action atomically; other hosts and the TV then receive the updated state. Only one game action may be pending at a time. If a player is stolen from, the game follows the agreed replacement-turn/steal-chain rule described below.
 
 When a numbered turn begins, the TV briefly reveals that player with their name and a playful visual treatment. It does not reveal future players. Gift photos are optional and uploaded after the game action is saved, so a slow upload cannot block a turn. Photos are private and follow the gift if it changes owners.
 
@@ -102,18 +102,13 @@ If the full internet connection is lost, the game can continue manually. V1 does
 - Verify the TV layout on the actual TV and check host controls on a narrow phone screen.
 - Gift photo upload failure must not undo or block a valid gameplay action.
 
-## 7. Open decisions before backend implementation
+## 7. Gameplay rules and open decisions
 
-Do not invent these rules in code. Record the decisions here before implementing the rules engine:
+The staged engine uses the approved V1 preset. Opening a gift ends a numbered turn and starts its steal count at zero. A successful steal increments that gift's count. Its displaced owner acts immediately and cannot take the same gift straight back. After an intervening steal, the same gift is eligible again until its third steal locks it to its holder.
 
-1. Exact default rules, including maximum steals and immediate steal-back behavior.
-2. What happens to a player whose gift is stolen: whether they act immediately, which actions they may take, and how a multi-steal chain ends.
-3. When a numbered turn advances and what final opportunity the first player receives.
-4. The meaning of a steal count and the exact moment a gift becomes locked.
-5. Which supported rules may change during a live game and how invalidating changes are handled.
-6. What participant information is entered and retained, and whether any personal portraits are in V1. Current direction is names with simple visual placeholders; persistent profiles/photos remain V2.
-7. How long completed event state, action history, and gift photos are retained, and how a TV pairing can be revoked.
-8. Countdown duration/default and whether sound effects are enabled by default.
+After the last opening, Player 1 may keep their gift or initiate one final chain. For this implementation a locked gift stays with its holder, including Player 1. If Player 1 steals, their former gift becomes available. Each displaced player may take that available gift to end the game or steal another eligible gift. Taking the available gift leaves its steal count unchanged. This guarantees a legal replacement throughout the final chain.
+
+The initial backend fixes these rules when a game starts. Live rule editing, retention, TV pairing, countdown settings and photo handling remain integration decisions.
 
 ## 8. V2 candidates
 
@@ -129,3 +124,32 @@ Revisit these only after family feedback and a successful V1 game:
 ## 9. Implementation history
 
 Planning decisions were consolidated on 2026-11-15. A standalone mock-only page previews the host console, TV board, turn reveal, steal moment, countdown, temporary photo preview, and awards. It uses fabricated data in memory only, makes no backend requests, and is not linked from the wishlist navigation. No Supabase game tables, storage bucket, or live rules engine have been implemented or deployed.
+
+
+### Backend milestone
+
+The migration in `backend/white-elephant.sql` adds a private game schema and two host RPCs. An editor or owner calls `we_start_game(request_id, names, cohosts)` with display names and optional co-host Auth UUIDs. Every selected co-host must have a confirmed email and active family membership when the game is created. An ineligible selection rejects the entire start request. Generate one UUID per start attempt and reuse it on retry. A replay returns the current game snapshot. Changed settings require a new request ID. Player names must be distinct after whitespace normalization and case folding. The server randomizes the order. Host actions require current family membership and event host status. Returned snapshots reveal only the numbered turns reached so far.
+
+Call `we_host_action(game, expected, command, move_type, target)` with `read` to reconnect. For writes, pass the last snapshot revision. Propose `open` with an optional title, `steal` or `take` with a gift key, or `keep`. Then confirm or cancel the pending move. Other host commands are `pause`, `resume`, and `undo`. Each write locks the game row and rejects a stale revision. Undo restores the state before the latest confirmed move and advances the revision.
+
+To verify on a configured disposable wishlist test database with no existing game schema, run from the repository root:
+
+```sh
+( echo 'BEGIN;'; cat backend/white-elephant.sql backend/tests/white-elephant.sql; echo 'ROLLBACK;' ) | psql "$TEST_DATABASE_URL" -X -v ON_ERROR_STOP=1
+```
+
+The tests create synthetic identities inside the transaction and exercise a full 18-player game. Production deployment and live host/TV integration are pending.
+
+### Staged host console
+
+Open `white-elephant-host.html?game=<game UUID>` from the same site as family sign-in. Each host uses their own authorized account and the same event link. A staged game must already exist. The console polls the host RPC every two seconds while visible, confirms against the displayed revision, and reloads the current board after a conflict or reconnect. The prototype and TV display remain separate. The mobile integration check plays a game in two Chromium contexts against disposable PostgREST and PostgreSQL services.
+
+### Staged split TV display
+
+On the host console, expand **TV display**, choose **Create TV link**, and open or copy that link to the room display. Each game supports one current link. Creating another rotates the pairing, and **Disconnect TV** revokes it. A link remains valid until rotated or revoked, including after the game ends so the final board can stay visible. Anyone with the link can view that game's board.
+
+The display polls every two seconds and reads committed player, turn, gift, ownership and lock data. It uses an event-scoped token in the URL fragment and sends it only in the TV RPC request body. The database stores its digest. The TV does not sign in or receive pending moves, host identities, or unrevealed names. On loss of access it clears the board.
+
+### Mid-game photos
+
+Once an opening is confirmed either host can take or choose a picture, or replace it later. The private bucket holds compressed JPEGs. The TV reads only the current photo through the paired game. Before release apply the migration and deploy `we-gift-photo` with `--no-verify-jwt` so paired displays can reach its game-scoped authorization check. Replaced and unattached objects remain private pending event cleanup.

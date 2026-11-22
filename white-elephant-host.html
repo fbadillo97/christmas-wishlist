@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' blob:; connect-src 'self' https://*.supabase.co; base-uri 'none'; object-src 'none'; form-action 'none'">
+  <title>White Elephant · Host console</title>
+  <link rel="stylesheet" href="white-elephant.css">
+  <link rel="stylesheet" href="white-elephant-host.css">
+  <script src="white-elephant-photos.js" defer></script>
+  <script src="white-elephant-host.js" defer></script>
+</head>
+<body>
+  <header class="site-header"><a class="brand" href="./">BADILLO FAMILY</a><a class="back-link" href="./">Family sign-in</a></header>
+  <main class="page">
+    <h1>White Elephant</h1>
+    <p id="status" role="status">Connecting to the game…</p>
+    <form id="setup" class="host-panel" hidden>
+      <h2>Start a gift exchange</h2>
+      <label for="names">Players (one name per line)</label><br>
+      <textarea id="names" rows="6" required></textarea>
+      <fieldset><legend>Co-hosts (optional)</legend><div id="choices"></div></fieldset>
+      <p>Players draw a random order. A gift locks on its third steal. No immediate steal-back. After the last opening, the first player gets a final opportunity.</p>
+      <button class="control-button primary-control" type="submit">Start game</button>
+    </form>
+    <section id="console" hidden>
+      <div class="game-layout">
+        <section class="game-board" aria-labelledby="player">
+          <header class="board-top"><div><p class="board-kicker" id="turn"></p><h2 id="player"></h2></div></header>
+          <p class="board-section-heading" id="instruction"></p>
+          <p role="status" id="photo-status"></p><div class="gift-grid" id="gifts"></div>
+        </section>
+        <section class="host-panel" aria-label="Host controls">
+          <h2>Game controls</h2><button type="button" id="share-host" class="text-button">Copy host link</button>
+          <fieldset id="controls" aria-label="Available game actions">
+            <div id="open-group" class="control-group">
+              <label for="title">Gift name (optional)</label>
+              <input id="title" maxlength="160" autocomplete="off">
+              <button id="open" class="control-button" type="button">Propose opening a gift</button>
+            </div>
+            <div id="moves" class="control-group"></div>
+            <div id="pending-group" class="control-group" hidden>
+              <strong id="pending"></strong>
+              <button id="confirm" class="control-button primary-control" type="button">Confirm move</button>
+              <button id="cancel" class="control-button" type="button">Cancel move</button>
+            </div>
+            <button id="pause" class="control-button" type="button">Pause game</button>
+            <button id="undo" class="text-button" type="button">Undo last move</button>
+          </fieldset>
+          <details><summary>TV display</summary>
+            <p>Creating a new link disconnects the previous display.</p>
+            <button id="pair-tv" type="button" class="control-button">Create TV link</button>
+            <a id="tv-link" hidden target="_blank" rel="noopener noreferrer">Open TV display</a>
+            <button id="revoke-tv" type="button" class="text-button">Disconnect TV</button>
+            <p id="tv-message" role="status"></p>
+          </details>
+        </section>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

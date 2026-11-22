@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' blob:; connect-src 'self' https://*.supabase.co; base-uri 'none'; object-src 'none'; form-action 'none'">
+  <meta name="theme-color" content="#183d32">
+  <title>White Elephant · TV</title>
+  <link rel="stylesheet" href="white-elephant.css?v=tv-split-7">
+  <script src="white-elephant-photos.js" defer></script>
+  <script src="white-elephant-tv.js" defer></script>
+</head>
+<body data-view="tv" data-layout="split">
+<main class="page">
+  <p role="status" id="status">Connecting to the display…</p>
+  <section class="game-board" id="board" hidden>
+    <header class="board-top"><h2>White Elephant</h2><strong class="turn-pill" id="turn"></strong></header>
+    <div class="spotlight"><div class="spotlight-label" id="phase"></div>
+      <div class="player-token" aria-hidden="true" id="number"></div>
+      <div class="spotlight-copy"><h3 id="player"></h3><p id="instruction"></p></div>
+    </div>
+    <div class="board-section-heading"><h3>Opened gifts <span class="count-chip" id="count"></span></h3></div>
+    <div class="gift-grid" id="gifts"></div>
+    <footer class="board-footer" id="wrapped"></footer>
+  </section>
+</main>
+</body></html>

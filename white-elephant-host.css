@@ -1,0 +1,10 @@
+#console fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+#console input { width: 100%; padding: .65rem; font: inherit; }
+#console .control-button { min-height: 44px; margin-block: .35rem; }
+#console .gift-card { padding: .75rem; overflow-wrap: anywhere; }
+#console .board-section-heading { display: block; }
+#player, #pending, #moves button { overflow-wrap: anywhere; }
+@media (max-width: 760px) {
+  #console .host-panel { order: 0; }
+  #console .game-board { width: 100%; }
+}
