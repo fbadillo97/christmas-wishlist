@@ -299,6 +299,16 @@ async def run():
         await b.locator("#confirm").click()
         await expect(tv.locator("#announcement")).to_have_attribute("data-kind","lock")
         await expect(tv.locator("#announcement")).to_contain_text("LOCKED IN WITH")
+        await tv.set_viewport_size({"width":3840,"height":2160})
+        await tv.emulate_media(reduced_motion="reduce")
+        assert await tv.locator("#announcement").evaluate("""panel => {
+            const bounds=panel.getBoundingClientRect();
+            const gift=panel.querySelector('.show-parcel').getBoundingClientRect();
+            const board=document.querySelector('#gifts').getBoundingClientRect();
+            return gift.width>50 && gift.height>50 && gift.left>=bounds.left &&
+                gift.right<=bounds.right && gift.top>=bounds.top && gift.bottom<=bounds.bottom &&
+                bounds.right<=board.left && getComputedStyle(panel.querySelector('.show-padlock')).animationName==='none';
+        }""")
         await expect(tv.locator("#gifts")).to_contain_text("Locked · 3 steals")
         await expect(a.locator("#gifts")).to_contain_text("Locked")
         await a.get_by_role("button",name="Take Gift 2").click()
