@@ -265,3 +265,18 @@ create function public.we_attach_photo(game uuid,gift uuid,previous uuid,photo u
 set search_path='' as $$select white_elephant.attach_photo(game,gift,previous,photo)$$;
 revoke all on function public.we_attach_photo(uuid,uuid,uuid,uuid),white_elephant.attach_photo(uuid,uuid,uuid,uuid) from public,anon;
 grant execute on function public.we_attach_photo(uuid,uuid,uuid,uuid),white_elephant.attach_photo(uuid,uuid,uuid,uuid) to authenticated;
+
+create function white_elephant.cohost_choices() returns table(account uuid,email text)
+language plpgsql stable security definer set search_path='' as $$
+begin
+ if coalesce(wishlist_private.member_role(),'') not in ('owner','editor') then
+   raise exception 'Organizer access required' using errcode='42501';
+ end if;
+ return query select u.id,f.email::text from wishlist_private.family_members f
+ join auth.users u on lower(u.email)=f.email where f.active and u.email_confirmed_at is not null and u.id<>auth.uid() order by f.email;
+end;
+$$;
+create function public.we_cohost_choices() returns table(account uuid,email text) language sql stable security invoker
+set search_path='' as $$select * from white_elephant.cohost_choices()$$;
+revoke all on function public.we_cohost_choices(), white_elephant.cohost_choices() from public,anon,authenticated;
+grant execute on function public.we_cohost_choices(), white_elephant.cohost_choices() to authenticated;

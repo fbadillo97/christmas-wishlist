@@ -92,7 +92,7 @@ async def run():
                 objects[path]=raw
                 self.reply(200,b'{}')
                 return
-            if self.path not in ("/rest/v1/rpc/we_host_action","/rest/v1/rpc/we_pair_tv","/rest/v1/rpc/we_tv_board","/rest/v1/rpc/we_attach_photo"):
+            if self.path not in ("/rest/v1/rpc/we_host_action","/rest/v1/rpc/we_pair_tv","/rest/v1/rpc/we_tv_board","/rest/v1/rpc/we_attach_photo","/rest/v1/rpc/we_start_game","/rest/v1/rpc/we_cohost_choices"):
                 self.send_error(404)
                 return
             body = self.rfile.read(int(self.headers["Content-Length"]))
@@ -136,16 +136,16 @@ async def run():
 
         api = await pw.request.new_context(base_url=rest, extra_http_headers={"Authorization":"Bearer "+test_token(host_a)})
         start = {"request_id":str(uuid4()),"names":["Red","Blue","Green"],"cohosts":[str(host_b)]}
-        for _ in range(30):
-            result = await api.post("/rpc/we_start_game",data=start)
-            if result.ok:
-                break
-            await asyncio.sleep(.3)
-        assert result.ok, await result.text()
-        game = (await result.json())["id"]
-        a,b = phones
-        url = origin + "/white-elephant-host.html?game=" + game
-        await asyncio.gather(a.goto(url), b.goto(url))
+        a,b=phones
+        await a.goto(origin+"/white-elephant-host.html")
+        await a.locator("#names").fill("Red\nBlue\nGreen")
+        await a.get_by_label(str(host_b)+"@example.invalid").check()
+        await a.get_by_role("button",name="Start game").click()
+        await expect(a.locator("#console")).to_be_visible()
+        from urllib.parse import urlsplit, parse_qs
+        url=a.url
+        game=parse_qs(urlsplit(url).query)["game"][0]
+        await b.goto(url)
         for page in phones:
             await expect(page.locator("#status")).to_have_text("Connected")
             assert await page.evaluate("document.documentElement.scrollWidth <= innerWidth")

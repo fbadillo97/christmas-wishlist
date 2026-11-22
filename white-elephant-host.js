@@ -10,6 +10,9 @@
 
   function clear(message) {
     snapshot = null;
+    el('setup').hidden=true;
+    el('choices').replaceChildren();
+    el('names').value='';
     el('photo-status').textContent='';
     el('tv-link').removeAttribute('href');
     el('tv-link').hidden = true;
@@ -219,7 +222,7 @@
     verifiedToken = null;
     feedback = '';
     clear('Checking host access…');
-    void read();
+    if(!game) location.reload(); else void read();
   });
   document.addEventListener('visibilitychange', read);
   window.addEventListener('online', read);
@@ -228,6 +231,21 @@
     clear('Offline. Reconnecting…');
   });
   async function start() {
+    if (!game) {
+      try {
+        config=await (await fetch('./config.json',{cache:'no-store'})).json();
+        const token=await getToken();
+        const choices=await request('/rest/v1/rpc/we_cohost_choices',token,{});
+        if(token!==session()?.access_token)return;
+        for(const person of choices){
+          const label=document.createElement('label'), box=document.createElement('input');
+          box.type='checkbox'; box.value=person.account;
+          label.append(box,document.createTextNode(person.email));el('choices').append(label,document.createElement('br'));
+        }
+        el('setup').hidden=false;el('status').textContent='';
+      } catch(e){clear(e.message);}
+      return;
+    }
     if (!/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(game || '')) {
       clear('Open the host link for your game.');
       return;
@@ -238,5 +256,26 @@
       setInterval(read,2000);
     } catch { clear('Could not load game settings. Refresh to reconnect.'); }
   }
+  let attempt;
+  el('setup').onsubmit=async event=>{
+    event.preventDefault();
+    const button=el('setup').querySelector('button');
+    if(button.disabled)return;
+    button.disabled=true;
+    try {
+      const names=el('names').value.split(/\r?\n/).map(n=>n.trim()).filter(Boolean);
+      const cohosts=[...el('choices').querySelectorAll(':checked')].map(n=>n.value);
+      const payload=JSON.stringify({names,cohosts});
+      if(attempt?.payload!==payload)attempt={payload,id:crypto.randomUUID()};
+      const token=await getToken();
+      const result=await request('/rest/v1/rpc/we_start_game',token,{names,cohosts,request_id:attempt.id});
+      if(token===session()?.access_token)location.replace('?game='+encodeURIComponent(result.id));
+    } catch(e){el('status').textContent=e.message;}
+    finally{button.disabled=false;}
+  };
+  el('share-host').onclick=async()=>{
+    try{await navigator.clipboard.writeText(location.href);el('status').textContent='Host link copied.';}
+    catch{el('status').textContent='Copy the address from your browser to share with a co-host.';}
+  };
   void start();
 })();
