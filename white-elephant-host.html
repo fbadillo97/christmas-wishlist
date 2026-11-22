@@ -18,10 +18,15 @@
     <h1>White Elephant</h1>
     <p id="status" role="status">Connecting to the game…</p>
     <form id="setup" class="host-panel" hidden>
-      <h2>Start a gift exchange</h2>
-      <details><summary>Add viewer accounts</summary><div id="recipients"></div></details><label for="names">Players (one name per line)</label><br>
-      <textarea id="names" rows="6" required></textarea>
-      <details id="setup-portraits"><summary>Optional player photos</summary><div id="setup-photos"></div></details><fieldset><legend>Co-hosts (optional)</legend><div id="choices"></div></fieldset>
+      <h2>Game contestants</h2>
+      <p>Select the family members playing in this exchange.</p>
+      <div id="recipients"></div>
+      <label for="guests"><strong>Guests</strong></label>
+      <textarea id="guests" rows="2" placeholder="Enter one guest name per line"></textarea>
+      <textarea id="names" hidden></textarea>
+      <p id="roster-count" role="status">0 contestants selected</p>
+      <details id="setup-portraits"><summary>Photos for this game</summary><div id="setup-photos"></div></details>
+      <details><summary>Co-host access</summary><div id="choices"></div></details>
       <p>Players draw a random order. A gift locks on its third steal. No immediate steal-back. After the last opening, the first player gets a final opportunity.</p>
       <button class="control-button primary-control" type="submit">Start game</button>
     </form>

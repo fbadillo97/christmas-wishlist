@@ -252,10 +252,10 @@
         const recipients=await request('/rest/v1/rpc/we_viewer_choices',token,{});
         if(token!==session()?.access_token)return;
         for(const viewer of recipients){
-          const name=viewer.name;
-          const add=document.createElement('button');add.type='button';add.textContent=name;
-          add.onclick=()=>{const names=el('names');const list=names.value.split('\n').map(n=>n.trim()).filter(Boolean);
-            if(!list.some(n=>n.toLowerCase()===name.toLowerCase()))names.value=[...list,name].join('\n');editPortraits();};
+          let name=viewer.name;
+          const add=document.createElement('input');
+          add.type='checkbox';add.value=name;add.onchange=syncRoster;
+          const select=document.createElement('label');select.append(add,document.createTextNode(name));
           const row=document.createElement('div'),label=document.createElement('label'),file=document.createElement('input');
           const use=document.createElement('button');use.type='button';use.textContent='Use saved photo for this game';use.hidden=!viewer.has_photo;
           file.type='file';file.accept='image/*';label.textContent='Account photo';file.setAttribute('aria-label','Save account photo for '+name);
@@ -272,16 +272,51 @@
             try{
               const auth=await getToken(),encoded=await request('/rest/v1/rpc/we_account_portrait',auth,{id:viewer.id});
               if(!encoded || session()?.access_token!==auth)return;
-              add.click();setupPhotos.set(name,new Blob([Uint8Array.from(atob(encoded),c=>c.charCodeAt(0))],{type:'image/jpeg'}));
+              add.checked=true;syncRoster();setupPhotos.set(name,new Blob([Uint8Array.from(atob(encoded),c=>c.charCodeAt(0))],{type:'image/jpeg'}));
               editPortraits();el('status').textContent='Portrait selected for '+name+'.';
             }catch(e){el('status').textContent=e.message;}
           };
-          label.append(file);row.append(add,label,use);el('recipients').append(row);
+          const photos=document.createElement('details'),summary=document.createElement('summary');
+          summary.textContent='Account photo';photos.append(summary,file,use);row.append(select,photos);
+          if(/^Family member [0-9a-f]{6}$/.test(name)){
+            const edit=document.createElement('button');
+            edit.type='button';edit.textContent='Add account name';row.insertBefore(edit,photos);
+            edit.onclick=async()=>{
+              edit.disabled=true;
+              try{
+                const auth=await getToken();
+                const members=await request('/rest/v1/rpc/editor_list_members',auth,{});
+                const member=members.find(item=>item.account_id===viewer.id && item.active);
+                if(!member || member.first_name?.trim() || member.last_name?.trim())throw Error('Account changed. Refresh the roster.');
+                const fields=document.createElement('fieldset'),legend=document.createElement('legend');
+                legend.textContent=member.email;fields.append(legend);
+                function nameField(title){
+                  const label=document.createElement('label'),input=document.createElement('input');
+                  input.type='text';input.maxLength=80;label.textContent=title;label.append(input);fields.append(label);return input;
+                }
+                const first=nameField('First name'),last=nameField('Last name'),save=document.createElement('button');
+                save.type='button';save.textContent='Save name';fields.append(save);edit.replaceWith(fields);first.focus();
+                save.onclick=async()=>{
+                  if(!first.value.trim()){first.focus();el('status').textContent='Enter a first name.';return;}
+                  save.disabled=true;
+                  const next=[first.value.trim(),last.value.trim()].filter(Boolean).join(' ');
+                  try{
+                    await request('/rest/v1/rpc/admin_save_account',await getToken(),{p_email:member.email,p_first_name:first.value.trim(),p_last_name:last.value.trim(),p_role:member.role,p_active:member.active,p_revision:member.revision});
+                    if(setupPhotos.has(name)){setupPhotos.set(next,setupPhotos.get(name));setupPhotos.delete(name);}
+                    name=next;add.value=name;select.lastChild.textContent=name;
+                    file.setAttribute('aria-label','Save account photo for '+name);
+                    fields.remove();syncRoster();el('status').textContent='Account name saved.';
+                  }catch(e){el('status').textContent=e.message;save.disabled=false;}
+                };
+              }catch(e){el('status').textContent=e.message;edit.disabled=false;}
+            };
+          }
+          el('recipients').append(row);
         }
         for(const person of choices){
           const label=document.createElement('label'), box=document.createElement('input');
           box.type='checkbox'; box.value=person.account;
-          label.append(box,document.createTextNode(person.email));el('choices').append(label,document.createElement('br'));
+          label.append(box,document.createTextNode(person.email));el('choices').append(label);
         }
         el('setup').hidden=false;el('status').textContent='';
       } catch(e){clear(e.message);}
@@ -311,11 +346,19 @@
     }
   }
   el('setup-portraits').ontoggle=()=>{if(el('setup-portraits').open)editPortraits();};
-  el('names').oninput=editPortraits;
+  function syncRoster(){
+    const selected=[...el('recipients').querySelectorAll(':checked')].map(box=>box.value);
+    const guests=el('guests').value.split('\n').map(name=>name.trim().replace(/\s+/g,' ')).filter(Boolean);
+    const roster=[...selected,...guests];
+    el('names').value=roster.join('\n');
+    el('roster-count').textContent=roster.length+' contestant'+(roster.length===1?'':'s')+' selected';
+    editPortraits();
+  }
+  el('guests').oninput=syncRoster;
   let attempt;
   el('setup').onsubmit=async event=>{
     event.preventDefault();
-    const button=el('setup').querySelector('button');
+    const button=el('setup').querySelector('[type=submit]');
     if(button.disabled)return;
     button.disabled=true;
     try {

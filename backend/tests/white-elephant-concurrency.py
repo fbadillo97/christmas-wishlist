@@ -60,6 +60,7 @@ def run():
         admin.execute((BACKEND / "white-elephant.sql").read_text())
         admin.execute((BACKEND / "white-elephant-portraits.sql").read_text())
         admin.execute((BACKEND / "white-elephant-viewer-roster.sql").read_text())
+        admin.execute((BACKEND / "white-elephant-family-roster.sql").read_text())
         host_a, host_b = uuid4(), uuid4()
         for host, role in [(host_a, "editor"), (host_b, "viewer")]:
             email = f"{host}@example.invalid"

@@ -39,6 +39,7 @@ async def run():
             admin.execute("INSERT INTO auth.users VALUES (%s,%s,now())", (host,email))
             admin.execute("INSERT INTO wishlist_private.family_members VALUES (%s,%s,true)", (email,role))
         admin.execute("UPDATE wishlist_private.family_members SET first_name='Robin',last_name='Winter' WHERE email=%s",(f"{host_b}@example.invalid",))
+        admin.execute("UPDATE wishlist_private.family_members SET first_name='Casey',last_name='Host' WHERE email=%s",(f"{host_a}@example.invalid",))
         admin.execute("NOTIFY pgrst, 'reload schema'")
 
     rest = "http://127.0.0.1:3000"
@@ -143,13 +144,20 @@ async def run():
             encoded=await page.evaluate("""color=>{const c=document.createElement('canvas'); c.width=c.height=10;
               const ctx=c.getContext('2d');ctx.fillStyle=color;ctx.fillRect(0,0,10,10);return c.toDataURL().split(',')[1]}""",color)
             await page.get_by_label(label).set_input_files({'name':'gift.png','mimeType':'image/png','buffer':base64.b64decode(encoded)})
-        await a.get_by_text("Add viewer accounts").click()
-        await expect(a.get_by_role("button",name="Red",exact=True)).to_have_count(0)
+        editor = a.get_by_role("checkbox",name="Casey Host",exact=True)
+        await editor.check()
+        await expect(a.locator("#roster-count")).to_have_text("1 contestant selected")
+        await editor.uncheck()
+        assert await a.evaluate("document.documentElement.scrollWidth <= innerWidth")
+        await a.locator("#recipients > div").filter(has_text="Robin Winter").locator("summary").click()
+        await expect(a.get_by_role("checkbox",name="Red",exact=True)).to_have_count(0)
         await upload(a,"Save account photo for Robin Winter","yellow")
         await a.get_by_role("button",name="Use saved photo for this game").click()
         await expect(a.locator("#names")).to_have_value("Robin Winter")
-        await a.locator("#names").fill("Robin Winter\nBlue\nGreen")
-        await a.get_by_label(str(host_b)+"@example.invalid").check()
+        await a.locator("#guests").fill("Blue\nGreen")
+        await expect(a.locator("#roster-count")).to_have_text("3 contestants selected")
+        await a.get_by_text("Co-host access").click()
+        await a.locator("#choices").get_by_label(str(host_b)+"@example.invalid").check()
         await a.get_by_role("button",name="Start game").click()
         await expect(a.locator("#console")).to_be_visible()
         from urllib.parse import urlsplit, parse_qs
