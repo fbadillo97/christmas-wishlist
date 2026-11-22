@@ -279,6 +279,7 @@ async def run():
         await a.get_by_text("TV display",exact=True).click()
         await a.locator("#pair-tv").click()
         await expect(a.locator("#tv-link")).to_be_visible()
+        await tv.goto("about:blank")
         await tv.goto(await a.locator("#tv-link").get_attribute("href"))
         await expect(tv.locator("#board")).to_be_visible()
         a.once("dialog",lambda dialog: dialog.dismiss())
