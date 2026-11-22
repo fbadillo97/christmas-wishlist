@@ -139,3 +139,7 @@ To verify on a configured disposable wishlist test database with no existing gam
 ```
 
 The tests create synthetic identities inside the transaction and exercise a full 18-player game. Production deployment and live host/TV integration are pending.
+
+### Staged host console
+
+Open `white-elephant-host.html?game=<game UUID>` from the same site as family sign-in. Each host uses their own authorized account and the same event link. A staged game must already exist. The console polls the host RPC every two seconds while visible, confirms against the displayed revision, and reloads the current board after a conflict or reconnect. The prototype and TV display remain separate. The mobile integration check plays a game in two Chromium contexts against disposable PostgREST and PostgreSQL services.
