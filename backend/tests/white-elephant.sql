@@ -136,3 +136,48 @@ begin
   assert white_elephant.move(previous,18,'keep',null)->>'phase'='done';
 end
 $test$;
+
+-- Validate the entire host selection before a new game becomes visible.
+do $test$
+declare
+  creator uuid := gen_random_uuid();
+  peer uuid := gen_random_uuid();
+  inactive uuid := gen_random_uuid();
+  unverified uuid := gen_random_uuid();
+  unlisted uuid := gen_random_uuid();
+  request_id uuid := gen_random_uuid();
+  candidate uuid;
+  account uuid;
+  snapshot jsonb;
+begin
+  foreach account in array array[creator, peer, inactive, unverified, unlisted] loop
+    insert into auth.users(id,email,email_confirmed_at)
+      values(account, account::text || '@example.invalid', case when account <> unverified then now() end);
+    if account <> unlisted then
+      insert into wishlist_private.family_members(email,role,active)
+        values(account::text || '@example.invalid', case when account=creator then 'editor' else 'viewer' end,
+               account <> inactive);
+    end if;
+  end loop;
+  perform set_config('request.jwt.claim.sub',creator::text,true);
+  foreach candidate in array array[gen_random_uuid(), inactive, unverified, unlisted, null::uuid] loop
+    begin
+      perform public.we_start_game(request_id,array['Red','Blue'],array[peer,candidate]);
+      raise exception 'Ineligible co-host accepted';
+    exception when invalid_parameter_value then null;
+    end;
+    assert not exists(select 1 from white_elephant.games where created_by=creator);
+  end loop;
+
+  snapshot := public.we_start_game(request_id,array['Red','Blue'],array[peer]);
+  snapshot := public.we_host_action((snapshot->>'id')::uuid,0,'propose','open','Parcel');
+  update wishlist_private.family_members set active=false where email=peer::text || '@example.invalid';
+  assert public.we_start_game(request_id,array['Red','Blue'],array[peer])=snapshot;
+  perform set_config('request.jwt.claim.sub',peer::text,true);
+  begin
+    perform public.we_host_action((snapshot->>'id')::uuid,1,'confirm');
+    raise exception 'Deactivated host confirmed a move';
+  exception when insufficient_privilege then null;
+  end;
+end
+$test$;
