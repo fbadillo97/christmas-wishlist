@@ -10,6 +10,7 @@
 
   function clear(message) {
     snapshot = null;
+    el('return-setup').hidden = true;
     el('setup').hidden=true;
     el('choices').replaceChildren();el('recipients').replaceChildren();el('portraits').replaceChildren();
     el('names').value='';
@@ -62,6 +63,13 @@
 
   function render(s) {
     const state = s.state, gifts = state.gifts, phase = state.phase;
+    if (phase === 'cancelled') {
+      clear('Game cancelled.');
+      el('return-setup').hidden = false;
+      return;
+    }
+    el('cancel-game').hidden = phase === 'done';
+    el('return-setup').hidden = phase !== 'done';
     const name = n => s.revealed[n - 1];
     const actor = name(state.active);
     if (snapshot?.revision !== s.revision) el('title').value = '';
@@ -173,7 +181,7 @@
       const latest = await rpc({expected:null,command:'read'},version);
       if (version !== generation || writing) return;
       if (!snapshot || latest.revision > snapshot.revision || JSON.stringify(latest.state.gifts)!==JSON.stringify(snapshot.state.gifts) || JSON.stringify(latest.portraits)!==JSON.stringify(snapshot.portraits)) render(latest);
-      el('status').textContent = feedback || 'Connected';
+      if (latest.state.phase !== 'cancelled') el('status').textContent = feedback || 'Connected';
     } catch (e) {
       if (version === generation && !writing) clear(e.message || 'Disconnected. Reconnecting…');
     } finally { polling = false; }
@@ -188,6 +196,10 @@
     try {
       const latest = await rpc({expected:snapshot.revision,command,move_type,target}, version);
       if (version !== generation) return;
+      if (command === 'cancel_game') {
+        location.replace('./white-elephant-host.html');
+        return;
+      }
       render(latest);
       el('status').textContent = 'Connected';
     } catch (e) {
@@ -225,6 +237,11 @@
   el('revoke-tv').onclick = () => pairTV(false);
   el('open').onclick = () => write('propose','open',el('title').value.trim() || null);
   el('confirm').onclick = () => write('confirm');
+  el('cancel-game').onclick = () => {
+    if (window.confirm('Cancel this game for everyone and return to setup? This game cannot be resumed.')) {
+      void write('cancel_game');
+    }
+  };
   el('cancel').onclick = () => write('cancel');
   el('pause').onclick = () => write(snapshot.paused ? 'resume' : 'pause');
   el('undo').onclick = () => { if (window.confirm('Undo the last confirmed move?')) void write('undo'); };

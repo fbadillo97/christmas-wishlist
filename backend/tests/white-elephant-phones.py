@@ -269,6 +269,28 @@ async def run():
         with psycopg.connect(os.environ["TEST_DATABASE_URL"]) as admin:
             assert admin.execute("SELECT count(*) FROM white_elephant.history WHERE game_id=%s",(game,)).fetchone()[0]==7
         print("Two mobile hosts synced; stale confirm recovered; displaced player acted; reload restored turn; seven moves recorded; both hosts and TV showed completion; revoked TV cleared.")
+        await a.locator("#return-setup").click()
+        await a.locator("#guests").fill("Amber\nSilver\nGold")
+        await a.get_by_text("Co-host access").click()
+        await a.get_by_label(str(host_b)+"@example.invalid").check()
+        await a.get_by_role("button",name="Start game").click()
+        await expect(a.locator("#console")).to_be_visible()
+        await b.goto(a.url)
+        await a.get_by_text("TV display",exact=True).click()
+        await a.locator("#pair-tv").click()
+        await expect(a.locator("#tv-link")).to_be_visible()
+        await tv.goto(await a.locator("#tv-link").get_attribute("href"))
+        await expect(tv.locator("#board")).to_be_visible()
+        a.once("dialog",lambda dialog: dialog.dismiss())
+        await a.locator("#cancel-game").click()
+        await expect(a.locator("#console")).to_be_visible()
+        a.once("dialog",lambda dialog: dialog.accept())
+        await a.locator("#cancel-game").click()
+        await expect(a.locator("#setup")).to_be_visible()
+        for page in [b,tv]:
+            await expect(page.locator("#status")).to_have_text("Game cancelled.")
+        await expect(b.locator("#console")).to_be_hidden()
+        await expect(tv.locator("#board")).to_be_hidden()
         await browser.close()
     server.shutdown()
 
