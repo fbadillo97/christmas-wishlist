@@ -2,7 +2,7 @@ import {chromium} from 'playwright';
 import fs from 'node:fs/promises';
 import assert from 'node:assert/strict';
 const browser=await chromium.launch({headless:true,args:['--no-sandbox']});
-for(const width of [390,1024]){
+for(const width of [320,375,390,430,768,1280]){
  const page=await browser.newPage({viewport:{width,height:900}});const errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.route('https://wishlist.test/**',async route=>{
   const name=new URL(route.request().url()).pathname.split('/').pop()||'admin.html';
@@ -18,6 +18,10 @@ for(const width of [390,1024]){
    {account_id:'b',first_name:'Ben',last_name:'Test',email:'b@example.invalid',role:'viewer',active:true,has_signed_in:true,has_passkey:false,invitation_status:'failed'}],gift_tracking:[]};
   window.wishlistAdmin.sync(window.syntheticData,true);
  });
+ await page.getByRole('button',{name:'Edit account b@example.invalid'}).click();
+ assert.equal(await page.locator('#member-email').inputValue(),'b@example.invalid');
+ await page.locator('#member-name').fill('Edited test name');
+ await page.locator('#cancel-member').click();
  const names=()=>page.locator('#member-list tr td:nth-child(2)').allTextContents();
  assert.deepEqual(await names(),['Anna','Ben','Zoe']);
  await page.getByRole('button',{name:'Sort by First name',exact:true}).click();assert.deepEqual(await names(),['Zoe','Ben','Anna']);

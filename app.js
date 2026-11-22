@@ -105,7 +105,7 @@ function render(){
   const card=node('article',null,'card'+(fullyPurchased?' card-purchased':fullyUnavailable?' card-unavailable':'')),art=node('div',null,'art');
   if(safeURL(g.image)){
    const img=node('img');img.src=safeURL(g.image);img.alt=g.title;img.loading='lazy';img.referrerPolicy='no-referrer';
-   img.addEventListener('error',()=>art.replaceChildren(node('span',g.symbol||'🎁')));art.append(img);
+   img.addEventListener('error',()=>img.replaceWith(node('span',g.symbol||'🎁')));art.append(img);
   }else art.textContent=g.symbol||'🎁';
   if(fullyPurchased)art.append(node('span','✓ Purchased','gift-status-banner'));
   else if(fullyUnavailable)art.append(node('span','Reserved · Unavailable','gift-status-banner gift-status-reserved'));
@@ -129,11 +129,14 @@ function render(){
     const state=mySelections.units.find(u=>u.gift_id===g.id&&u.unit_no===0);
     content.append(node('p',state?(state.status==='purchased'?'You purchased something.':"You’re getting something."):'Choose something inspired by this idea.'));
     const actions=node('div',null,'actions');
-    if(!g.archived){const track=node('button',state?'Edit my private selection':"I’m getting something");track.disabled=busy||refreshing;track.onclick=()=>openIdea(g,state);actions.append(track);}
+    if(!g.archived){const track=node('button',state?'Edit my private selection':"I’m getting something",state?null:'primary');track.disabled=busy||refreshing;track.onclick=()=>openIdea(g,state);actions.append(track);}
     if(state){
      if(state.private_note){content.append(node('b','Your private note'),node('p',state.private_note,'gift-notes'));}
-     if(!g.archived&&state.status!=='purchased'){const buy=node('button','Mark purchased');buy.disabled=busy||refreshing;buy.onclick=()=>changeIdea(g.id,'purchased',state.private_note);actions.append(buy);}
-     const undo=node('button','Undo my selection');undo.disabled=busy||refreshing;undo.onclick=()=>changeIdea(g.id,'available','');actions.append(undo);
+     if(!g.archived&&state.status!=='purchased'){const buy=node('button','Mark purchased','primary');buy.disabled=busy||refreshing;buy.onclick=()=>changeIdea(g.id,'purchased',state.private_note);actions.append(buy);}
+     const undo=node('button','Undo my selection');undo.disabled=busy||refreshing;undo.onclick=()=>{
+      if(state.status==='purchased'&&!confirmPurchaseUndo(g.title,'This removes your private selection and its note.'))return;
+      return changeIdea(g.id,'available','');
+     };actions.append(undo);
     }
     content.append(actions);
    }
@@ -157,9 +160,17 @@ function render(){
    const actions=node('div',null,'actions');
    const choices=!state||state.status==='available'?[['Reserve','reserved'],['Mark purchased','purchased']]:state.mine?[...(state.status==='reserved'&&!g.archived?[['Mark purchased','purchased']]:[]),['Undo my selection','available']]:[];
    for(const [label,value] of choices){
-    const button=node('button',label);button.disabled=busy||refreshing||!state||!session;
+    const primary=value==='reserved'||(value==='purchased'&&state?.status==='reserved');
+    const button=node('button',label,primary?'primary':null);button.disabled=busy||refreshing||!state||!session;
     button.setAttribute('aria-label',label+' · '+g.title+(quantity>1?' · item '+number:''));
-    button.addEventListener('click',()=>change(g.id,number,value));actions.append(button);
+    button.addEventListener('click',()=>{
+     if(value==='available'&&state?.status==='purchased'){
+      const item=quantity>1?g.title+' · Item '+number:g.title;
+      const effect=g.archived?'This removes your selection from this archived gift.':'This releases the item for someone else to choose.';
+      if(!confirmPurchaseUndo(item,effect))return;
+     }
+     return change(g.id,number,value);
+    });actions.append(button);
    }
    if(state?.status==='purchased'&&!state.mine){
     const unavailable=node('button','✓ Purchased · Unavailable','unit-unavailable-button');unavailable.type='button';unavailable.disabled=true;
@@ -171,6 +182,10 @@ function render(){
   }
   content.append(selections);if(!g.archived&&['editor','owner'].includes(data.account?.role)){const edit=node('button','Edit gift','edit-gift');edit.type='button';edit.onclick=()=>window.wishlistEditor.openGift(g.id);content.append(edit);}card.append(art,content);$('#gifts').append(card);
  }
+}
+
+function confirmPurchaseUndo(title,effect){
+ return window.confirm('Undo your purchase of “'+title+'”?\n\n'+effect);
 }
 
 let ideaEditing=null,ideaDirty=false;
