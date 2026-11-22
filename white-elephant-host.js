@@ -146,7 +146,7 @@
       el('status').textContent = 'Connected';
     } catch (e) {
       if (version !== generation) return;
-      feedback = e.code === '40001' ? 'Another host acted first. The board has been refreshed.' :
+      feedback = e.code === 'PT409' ? 'Another host acted first. The board has been refreshed.' :
         'Check the current board before trying again. ' + e.message;
       clear('Checking the latest game state…');
     } finally {
