@@ -210,7 +210,9 @@ async def run():
         assert data["revealed"]==[first_player]
         await a.locator("#title").fill("Parcel")
         await a.locator("#open").click()
-        await expect(b.locator("#pending")).to_contain_text("Parcel")
+        for page in phones:
+            await expect(page.locator("#pending")).to_have_text("Waiting to confirm new gift selection.")
+            await expect(page.locator("#confirm")).to_have_text("Confirm New Gift")
         await b.locator("#confirm").click()
         assert await asyncio.to_thread(sent.wait,3), "Second phone did not submit its confirmation"
         await a.locator("#confirm").click()
@@ -241,13 +243,26 @@ async def run():
         await expect(tv.locator('#gifts img')).to_have_js_property('naturalWidth',10)
         replacement=await tv.locator('#gifts img').first.get_attribute('data-photo')
         assert len(set(objects.values()))==4
-        await b.get_by_role("button",name="Steal Parcel").click()
-        await expect(a.locator("#pending")).to_contain_text("steal Parcel")
+        steal=b.get_by_role("button",name="Player Chose to Steal Parcel")
+        await expect(steal).to_be_visible()
+        assert await steal.evaluate("""button => {
+            const sample=button.cloneNode(false);
+            sample.textContent='Player Chose to Steal '+ 'HolidayGift'.repeat(16);
+            button.after(sample);
+            const rect=sample.getBoundingClientRect();
+            const fits=sample.scrollWidth <= sample.clientWidth && rect.right <= innerWidth && rect.height < 190;
+            sample.remove();
+            return fits;
+        }""")
+        await steal.click()
+        for page in phones:
+            await expect(page.locator("#confirm")).to_have_text("Confirm Steal")
+        await expect(a.locator("#pending")).to_have_text("Waiting to confirm that the player stole Parcel.")
         await a.locator("#confirm").click()
         for page in phones:
             await expect(page.locator("#player")).to_have_text(first_player)
             await expect(page.locator("#gifts")).to_contain_text("1/3 steals")
-            await expect(page.get_by_role("button",name="Steal Parcel")).to_have_count(0)
+            await expect(page.get_by_role("button",name="Player Chose to Steal Parcel")).to_have_count(0)
         await expect(tv.locator("#player")).to_have_text(first_player)
         await expect(tv.locator("#gifts")).to_contain_text("1/3 steals")
         await tv.reload()
@@ -257,19 +272,19 @@ async def run():
         await b.reload()
         await expect(b.locator("#player")).to_have_text(first_player)
         await expect(b.locator("#turn")).to_have_text("Turn 2 of 3")
-        await b.get_by_role("button",name="Propose opening a gift").click()
+        await b.get_by_role("button",name="Player Chose a New Gift").click()
         await a.locator("#confirm").click()
         await expect(b.locator("#turn")).to_have_text("Turn 3 of 3")
-        await a.get_by_role("button",name="Steal Parcel").click()
-        await expect(b.locator("#pending")).to_contain_text("steal Parcel")
+        await a.get_by_role("button",name="Player Chose to Steal Parcel").click()
+        await expect(b.locator("#pending")).to_have_text("Waiting to confirm that the player stole Parcel.")
         await b.locator("#confirm").click()
         await expect(tv.locator("#gifts")).to_contain_text("2/3 steals")
         await a.locator("#open").click()
         await expect(b.locator("#confirm")).to_be_visible()
         await b.locator("#confirm").click()
         await expect(a.locator("#turn")).to_have_text("Final exchange")
-        await a.get_by_role("button",name="Steal Parcel").click()
-        await expect(b.locator("#pending")).to_contain_text("steal Parcel")
+        await a.get_by_role("button",name="Player Chose to Steal Parcel").click()
+        await expect(b.locator("#pending")).to_have_text("Waiting to confirm that the player stole Parcel.")
         await b.locator("#confirm").click()
         await expect(tv.locator("#gifts")).to_contain_text("Locked · 3 steals")
         await expect(a.locator("#gifts")).to_contain_text("Locked")

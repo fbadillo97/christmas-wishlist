@@ -124,16 +124,27 @@
       if (!canPropose || phase === 'done') continue;
       if (phase === 'replacement' && g.owner === null) addMove('Take ' + g.title,'take',key);
       else if (g.owner && g.owner !== state.active && g.steals < 3 && key !== state.blocked && !ownLocked)
-        addMove('Steal ' + g.title,'steal',key);
+        addMove('Player Chose to Steal ' + g.title,'steal',key);
     }
     if (canPropose && phase === 'final') addMove('Keep current gift','keep',null);
     el('open-group').hidden = !canPropose || phase !== 'regular';
     el('pending-group').hidden = !s.pending;
     if (s.pending) {
       const {type,target} = s.pending;
-      const detail = type === 'open' ? 'open ' + (target || 'a wrapped gift') :
-        type === 'keep' ? 'keep their gift' : type + ' ' + gifts[target].title;
-      el('pending').textContent = 'Pending: ' + actor + ' to ' + detail;
+      let message, confirmation;
+      if (type === 'open') {
+        message = 'Waiting to confirm new gift selection.';
+        confirmation = 'Confirm New Gift';
+      } else if (type === 'steal') {
+        message = 'Waiting to confirm that the player stole ' + gifts[target].title + '.';
+        confirmation = 'Confirm Steal';
+      } else {
+        const detail = type === 'keep' ? 'keep their gift' : type + ' ' + gifts[target].title;
+        message = 'Pending: ' + actor + ' to ' + detail;
+        confirmation = 'Confirm move';
+      }
+      el('pending').textContent = message;
+      el('confirm').textContent = confirmation;
     }
     el('confirm').disabled = s.paused;
     el('pause').textContent = s.paused ? 'Resume game' : 'Pause game';
