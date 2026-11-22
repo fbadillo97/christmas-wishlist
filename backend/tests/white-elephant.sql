@@ -75,7 +75,7 @@ begin
   perform public.we_host_action(game,0,'propose','open','Parcel');
   perform set_config('request.jwt.claim.sub',peer::text,true);
   begin perform public.we_host_action(game,0,'propose','open','Second');
-  exception when serialization_failure then refused := true; end;
+  exception when sqlstate 'PT409' then refused := true; end;
   assert refused, 'stale proposal accepted';
   refused := false;
   begin perform public.we_host_action(game,1,'undo');
