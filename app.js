@@ -171,9 +171,17 @@ function renderGifts(){
   else if(fullyUnavailable)art.append(node('span','Reserved · Unavailable','gift-status-banner gift-status-reserved'));
   const content=node('div',null,'content');
   content.append(node('span',data.people.find(p=>p.id===g.person)?.name||'Family','tag'),node('h3',g.title));
-  if(fullyPurchased)content.append(node('p','✓ Purchased · This gift is taken care of.','gift-status-notice'));
+  const multiUnit=limited && quantity>1;
+  if(multiUnit && !g.archived){
+   const available=allUnits.filter(unit=>unit.status==='available').length;
+   const known=allUnits.length===quantity && available+totalReserved+totalPurchased===quantity;
+   const summary=node('div',null,'gift-status-notice');
+   summary.append(node('strong',known?available+' of '+quantity+' available':'Checking availability…'));
+   if(known)summary.append(node('small',totalReserved+' reserved · '+totalPurchased+' purchased','availability-detail'));
+   content.append(summary);
+  }
+  else if(fullyPurchased)content.append(node('p','✓ Purchased · This gift is taken care of.','gift-status-notice'));
   else if(fullyUnavailable)content.append(node('p','Reserved · All requested items are spoken for.','gift-status-notice gift-status-pending'));
-  else if(totalPurchased>0)content.append(node('p','✓ '+totalPurchased+' purchased · '+(quantity-totalPurchased-totalReserved)+' still available','gift-status-notice gift-status-partial'));
   const pills=node('div',null,'pills');
   pills.append(node('span',g.kind==='idea'?'General idea':'Specific product'));
   if(g.match==='exact'||g.match==='similar')pills.append(node('span',g.match==='exact'?'Exact item please':'Similar is lovely'));
@@ -204,7 +212,7 @@ function renderGifts(){
    card.append(art,content);$('#gifts').append(card);continue;
   }
   const counts={available:0,reserved:0,purchased:0};units.forEach(u=>{if(u.status in counts)counts[u.status]++;});
-  content.append(node('p',view==='mine'?units.length+' selected by you · '+counts.reserved+' reserved · '+counts.purchased+' purchased':units.length===quantity?quantity+' wanted · '+counts.available+' available'+(counts.reserved?' · '+counts.reserved+' reserved':'')+(counts.purchased?' · '+counts.purchased+' purchased':''):quantity+' wanted · Checking availability…','quantity-summary'));
+  if(!multiUnit || view==='mine')content.append(node('p',view==='mine'?units.length+' selected by you · '+counts.reserved+' reserved · '+counts.purchased+' purchased':units.length===quantity?quantity+' wanted · '+counts.available+' available'+(counts.reserved?' · '+counts.reserved+' reserved':'')+(counts.purchased?' · '+counts.purchased+' purchased':''):quantity+' wanted · Checking availability…','quantity-summary'));
   const selections=node('div',null,'unit-list');
   if(quantity>1){
    selections.classList.add('unit-list-scroll');

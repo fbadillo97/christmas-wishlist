@@ -174,3 +174,5 @@
 .gift-search > div { display: flex; gap: 8px; }
 .gift-search input { flex: 1; min-width: 0; min-height: 44px; }
 #search-count { font-size: 14px; color: var(--muted); }
+
+.availability-detail { display: block; margin-top: 2px; font-size: 13px; font-weight: 400; }

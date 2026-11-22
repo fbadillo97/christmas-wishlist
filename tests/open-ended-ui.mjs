@@ -11,6 +11,7 @@ const fixtures={account:{role:'viewer'},people:[{id:'p',name:'Test recipient',sy
  {id:'open',person:'p',title:'Synthetic idea',kind:'idea',reservation_mode:'open-ended',quantity:1},
  {id:'product',person:'p',title:'Synthetic product',kind:'product',reservation_mode:'limited',quantity:1},
  {id:'inspire',person:'p',title:'Synthetic inspiration',kind:'idea',reservation_mode:'inspiration-only',quantity:1}]};
+let productUnits=[{gift_id:'product',unit_no:1,status:'reserved',mine:false}];
 let units=[],requests=[];
 function setup({signedIn=true,approved=true,role='viewer'}={}){
  const dom=new JSDOM(html,{url:'https://example.invalid/christmas-wishlist/',runScripts:'outside-only'}),w=dom.window;
@@ -24,7 +25,7 @@ function setup({signedIn=true,approved=true,role='viewer'}={}){
   if(url.endsWith('/auth/v1/user'))value={email:'test@example.invalid'};
   else if(!approved)return {ok:false,status:403,json:async()=>({message:'Family access required'})};
   else if(url.endsWith('get_wishlist'))value={...fixtures,account:{role}};
-  else if(url.endsWith('list_gift_units'))value=[{gift_id:'product',unit_no:1,status:'reserved',mine:false}];
+  else if(url.endsWith('list_gift_units'))value=productUnits;
   else if(url.endsWith('get_my_selections'))value={gifts:units.length?[fixtures.gifts[0]]:[],units};
   else if(url.endsWith('set_idea_selection')){const b=JSON.parse(opts.body);units=b.p_status==='available'?[]:[{gift_id:b.p_gift_id,unit_no:0,mine:true,status:b.p_status,private_note:b.p_private_note}];value=null;}
   else if(url.endsWith('get_family_photo'))value=null;
@@ -96,3 +97,18 @@ search('puzzle');await w.document.querySelector('#logout').onclick();
 assert.equal(field.value,'');assert.equal(w.document.querySelector('#search-count').textContent,'');
 d.window.close();
 console.log('Gift search ranking, typing, combined filters, clearing, and sign-out passed.');
+
+fixtures.gifts.find(g=>g.id==='product').quantity=3;
+productUnits=['purchased','reserved','available'].map((status,i)=>({gift_id:'product',unit_no:i+1,status,mine:false}));
+for(const lastStatus of ['available','reserved','available']){
+ productUnits[2].status=lastStatus;
+ d=setup();await tick();await tick();w=d.window;
+ const card=()=>[...w.document.querySelectorAll('.card')].find(c=>c.querySelector('h3').textContent==='Floor Puzzle');
+ const remaining=Number(lastStatus==='available');
+ assert.equal(card().querySelector('.gift-status-notice strong').textContent,remaining+' of 3 available');
+ assert.equal(card().querySelector('.availability-detail').textContent,(2-remaining)+' reserved · 1 purchased');
+ const filter=w.document.querySelector('#filter');filter.value='available';filter.onchange();
+ assert.equal(Boolean(card()),Boolean(remaining));
+ d.window.close();
+}
+console.log('Partial availability, last claim, and release passed.');
