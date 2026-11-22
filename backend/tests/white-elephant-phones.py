@@ -280,7 +280,7 @@ async def run():
         await a.locator("#pair-tv").click()
         await expect(a.locator("#tv-link")).to_be_visible()
         await tv.goto("about:blank")
-        await tv.goto(await a.locator("#tv-link").get_attribute("href"))
+        await tv.goto(await a.locator("#tv-link").evaluate("link => link.href"))
         await expect(tv.locator("#board")).to_be_visible()
         a.once("dialog",lambda dialog: dialog.dismiss())
         await a.locator("#cancel-game").click()
