@@ -45,6 +45,8 @@ def run():
             CREATE SCHEMA auth;
             CREATE SCHEMA wishlist_private;
             CREATE TABLE auth.users(id uuid primary key, email text, email_confirmed_at timestamptz);
+            CREATE TABLE wishlist_private.wishlist_people(name text);
+            INSERT INTO wishlist_private.wishlist_people VALUES ('Red');
             CREATE TABLE wishlist_private.family_members(email text primary key, role text, active boolean);
             CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS
             $$ SELECT current_setting('request.jwt.claim.sub', true)::uuid $$;
@@ -56,6 +58,7 @@ def run():
             $$ SELECT wishlist_private.member_role() IS NOT NULL $$;
         """)
         admin.execute((BACKEND / "white-elephant.sql").read_text())
+        admin.execute((BACKEND / "white-elephant-portraits.sql").read_text())
         host_a, host_b = uuid4(), uuid4()
         for host, role in [(host_a, "editor"), (host_b, "viewer")]:
             email = f"{host}@example.invalid"

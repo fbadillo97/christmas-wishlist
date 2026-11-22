@@ -19,9 +19,9 @@
     <p id="status" role="status">Connecting to the game…</p>
     <form id="setup" class="host-panel" hidden>
       <h2>Start a gift exchange</h2>
-      <label for="names">Players (one name per line)</label><br>
+      <details><summary>Add wishlist recipients</summary><div id="recipients"></div></details><label for="names">Players (one name per line)</label><br>
       <textarea id="names" rows="6" required></textarea>
-      <fieldset><legend>Co-hosts (optional)</legend><div id="choices"></div></fieldset>
+      <details id="setup-portraits"><summary>Optional player photos</summary><div id="setup-photos"></div></details><fieldset><legend>Co-hosts (optional)</legend><div id="choices"></div></fieldset>
       <p>Players draw a random order. A gift locks on its third steal. No immediate steal-back. After the last opening, the first player gets a final opportunity.</p>
       <button class="control-button primary-control" type="submit">Start game</button>
     </form>
@@ -33,7 +33,7 @@
           <p role="status" id="photo-status"></p><div class="gift-grid" id="gifts"></div>
         </section>
         <section class="host-panel" aria-label="Host controls">
-          <h2>Game controls</h2><button type="button" id="share-host" class="text-button">Copy host link</button>
+          <details><summary>Player portraits</summary><div id="portraits"></div></details><h2>Game controls</h2><button type="button" id="share-host" class="text-button">Copy host link</button>
           <fieldset id="controls" aria-label="Available game actions">
             <div id="open-group" class="control-group">
               <label for="title">Gift name (optional)</label>

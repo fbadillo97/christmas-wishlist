@@ -14,7 +14,7 @@ Deno.serve(async req=>{
     if(!board.ok) return empty(board.status);
     const data=await board.json();
     const gifts=Object.values(token?data.gifts:data.state.gifts) as {id:string,photo:string}[];
-    if(!gifts.some(g=>g.id===gift&&g.photo===photo)) return empty(404);
+    if(![...gifts,...(data.portraits||[])].some(g=>g.id===gift&&g.photo===photo)) return empty(404);
     const image=await fetch(url+'/storage/v1/object/authenticated/we-gift-photos/'+game+'/'+gift+'/'+photo+'.jpg',{headers:{apikey:key,Authorization:'Bearer '+key}});
     if(!image.ok) return empty(image.status);
     return new Response(image.body,{headers:{...headers,'Content-Type':'image/jpeg','X-Content-Type-Options':'nosniff'}});

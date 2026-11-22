@@ -11,7 +11,7 @@
   function clear(message) {
     snapshot = null;
     el('setup').hidden=true;
-    el('choices').replaceChildren();
+    el('choices').replaceChildren();el('recipients').replaceChildren();el('portraits').replaceChildren();
     el('names').value='';
     el('photo-status').textContent='';
     el('tv-link').removeAttribute('href');
@@ -74,6 +74,15 @@
       'Take the available gift or steal an eligible gift.' : phase === 'final' ?
       'Keep your gift or start the final exchange.' : phase === 'done' ?
       'Everyone has a gift.' : 'Open a wrapped gift or steal an eligible gift.';
+    el('portraits').replaceChildren();
+    for(const person of s.portraits || []){
+      const row=document.createElement('div'),label=document.createElement('label'),input=document.createElement('input');
+      label.textContent=person.title;input.type='file';input.accept='image/*';
+      input.setAttribute('aria-label','Portrait for '+person.title);
+      input.onchange=()=>{if(input.files[0])upload(person,input.files[0]);};
+      label.append(input);row.append(label);giftPhotos.show(row,person,config,game,verifiedToken);
+      el('portraits').append(row);
+    }
     el('gifts').replaceChildren();
     el('moves').replaceChildren();
     const canPropose = !s.paused && !s.pending;
@@ -123,18 +132,21 @@
     el('controls').disabled = writing;
   }
 
+  async function sendPhoto(game,g,file,auth){
+      const blob=await giftPhotos.compress(file), photo=crypto.randomUUID();
+      if(session()?.access_token!==auth)throw stale();
+      const result=await fetch(config.supabaseUrl+'/storage/v1/object/we-gift-photos/'+game+'/'+g.id+'/'+photo+'.jpg',{
+        method:'POST',headers:{apikey:config.publishableKey,Authorization:'Bearer '+auth,'Content-Type':'image/jpeg'},body:blob,signal:AbortSignal.timeout(30000)});
+      if(!result.ok)throw Error('Upload failed. Try again.');
+      if(session()?.access_token!==auth)throw stale();
+      await request('/rest/v1/rpc/we_attach_photo',auth,{game,gift:g.id,photo,previous:g.photo||null});
+  }
   async function upload(g,file){
     const auth=await getToken().catch(()=>null);
     if(!auth || !snapshot)return;
     el('photo-status').textContent='Uploading photo…';
     try {
-      const blob=await giftPhotos.compress(file), photo=crypto.randomUUID();
-      if(session()?.access_token!==auth)return;
-      const result=await fetch(config.supabaseUrl+'/storage/v1/object/we-gift-photos/'+game+'/'+g.id+'/'+photo+'.jpg',{
-        method:'POST',headers:{apikey:config.publishableKey,Authorization:'Bearer '+auth,'Content-Type':'image/jpeg'},body:blob,signal:AbortSignal.timeout(30000)});
-      if(!result.ok)throw Error('Upload failed. Try again.');
-      if(session()?.access_token!==auth)return;
-      await request('/rest/v1/rpc/we_attach_photo',auth,{game,gift:g.id,photo,previous:g.photo||null});
+      await sendPhoto(game,g,file,auth);
       if(snapshot && session()?.access_token===auth)el('photo-status').textContent='Photo saved.';
       void read();
     } catch(e){if(snapshot && session()?.access_token===auth)el('photo-status').textContent=e.message;}
@@ -160,7 +172,7 @@
     try {
       const latest = await rpc({expected:null,command:'read'},version);
       if (version !== generation || writing) return;
-      if (!snapshot || latest.revision > snapshot.revision || JSON.stringify(latest.state.gifts)!==JSON.stringify(snapshot.state.gifts)) render(latest);
+      if (!snapshot || latest.revision > snapshot.revision || JSON.stringify(latest.state.gifts)!==JSON.stringify(snapshot.state.gifts) || JSON.stringify(latest.portraits)!==JSON.stringify(snapshot.portraits)) render(latest);
       el('status').textContent = feedback || 'Connected';
     } catch (e) {
       if (version === generation && !writing) clear(e.message || 'Disconnected. Reconnecting…');
@@ -237,6 +249,14 @@
         const token=await getToken();
         const choices=await request('/rest/v1/rpc/we_cohost_choices',token,{});
         if(token!==session()?.access_token)return;
+        const recipients=await request('/rest/v1/rpc/we_recipient_names',token,{});
+        if(token!==session()?.access_token)return;
+        for(const name of recipients){
+          const add=document.createElement('button');add.type='button';add.textContent=name;
+          add.onclick=()=>{const names=el('names');const list=names.value.split('\n').map(n=>n.trim()).filter(Boolean);
+            if(!list.some(n=>n.toLowerCase()===name.toLowerCase()))names.value=[...list,name].join('\n');editPortraits();};
+          el('recipients').append(add);
+        }
         for(const person of choices){
           const label=document.createElement('label'), box=document.createElement('input');
           box.type='checkbox'; box.value=person.account;
@@ -256,6 +276,21 @@
       setInterval(read,2000);
     } catch { clear('Could not load game settings. Refresh to reconnect.'); }
   }
+  const setupPhotos=new Map();
+  function editPortraits(){
+    const names=new Set(el('names').value.split('\n').map(n=>n.trim().replace(/\s+/g,' ')).filter(Boolean));
+    for(const name of setupPhotos.keys())if(!names.has(name))setupPhotos.delete(name);
+    el('setup-photos').replaceChildren();
+    for(const name of names){
+      const label=document.createElement('label'),input=document.createElement('input');
+      label.textContent=name+(setupPhotos.has(name)?' (selected)':'');
+      input.type='file'; input.accept='image/*'; input.setAttribute('aria-label','Setup portrait for '+name);
+      input.onchange=()=>{if(input.files[0])setupPhotos.set(name,input.files[0]);};
+      label.append(input);el('setup-photos').append(label);
+    }
+  }
+  el('setup-portraits').ontoggle=()=>{if(el('setup-portraits').open)editPortraits();};
+  el('names').oninput=editPortraits;
   let attempt;
   el('setup').onsubmit=async event=>{
     event.preventDefault();
@@ -269,7 +304,17 @@
       if(attempt?.payload!==payload)attempt={payload,id:crypto.randomUUID()};
       const token=await getToken();
       const result=await request('/rest/v1/rpc/we_start_game',token,{names,cohosts,request_id:attempt.id});
-      if(token===session()?.access_token)location.replace('?game='+encodeURIComponent(result.id));
+      const failed=[];
+      for(const person of result.portraits || []){
+        const file=setupPhotos.get(person.title);
+        if(!file)continue;
+        if(token!==session()?.access_token)return;
+        try{await sendPhoto(result.id,person,file,token);}catch{failed.push(person.title);}
+      }
+      if(token===session()?.access_token){
+        if(failed.length)window.alert('Game started. Retry these portraits in Game controls: '+failed.join(', '));
+        location.replace('?game='+encodeURIComponent(result.id));
+      }
     } catch(e){el('status').textContent=e.message;}
     finally{button.disabled=false;}
   };

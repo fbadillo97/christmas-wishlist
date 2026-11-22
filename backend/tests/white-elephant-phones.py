@@ -92,7 +92,7 @@ async def run():
                 objects[path]=raw
                 self.reply(200,b'{}')
                 return
-            if self.path not in ("/rest/v1/rpc/we_host_action","/rest/v1/rpc/we_pair_tv","/rest/v1/rpc/we_tv_board","/rest/v1/rpc/we_attach_photo","/rest/v1/rpc/we_start_game","/rest/v1/rpc/we_cohost_choices"):
+            if self.path not in ("/rest/v1/rpc/we_host_action","/rest/v1/rpc/we_pair_tv","/rest/v1/rpc/we_tv_board","/rest/v1/rpc/we_attach_photo","/rest/v1/rpc/we_start_game","/rest/v1/rpc/we_cohost_choices","/rest/v1/rpc/we_recipient_names"):
                 self.send_error(404)
                 return
             body = self.rfile.read(int(self.headers["Content-Length"]))
@@ -138,6 +138,9 @@ async def run():
         start = {"request_id":str(uuid4()),"names":["Red","Blue","Green"],"cohosts":[str(host_b)]}
         a,b=phones
         await a.goto(origin+"/white-elephant-host.html")
+        await a.get_by_text("Add wishlist recipients").click()
+        await a.get_by_role("button",name="Red",exact=True).click()
+        await expect(a.locator("#names")).to_have_value("Red")
         await a.locator("#names").fill("Red\nBlue\nGreen")
         await a.get_by_label(str(host_b)+"@example.invalid").check()
         await a.get_by_role("button",name="Start game").click()
@@ -170,7 +173,7 @@ async def run():
         assert private.status in (401,403)
         initial_board = await guest.post("/rpc/we_tv_board",data={"game":game,"token":pairing})
         data = await initial_board.json()
-        assert set(data)=={"revision","paused","phase","turn","active","gifts","revealed","player_count"}
+        assert set(data)=={"portraits","revision","paused","phase","turn","active","gifts","revealed","player_count"}
         assert data["revealed"]==[first_player]
         await a.locator("#title").fill("Parcel")
         await a.locator("#open").click()
@@ -189,6 +192,10 @@ async def run():
             encoded=await page.evaluate("""color=>{const c=document.createElement('canvas'); c.width=c.height=10;
               const ctx=c.getContext('2d');ctx.fillStyle=color;ctx.fillRect(0,0,10,10);return c.toDataURL().split(',')[1]}""",color)
             await page.get_by_label(label).set_input_files({'name':'gift.png','mimeType':'image/png','buffer':base64.b64decode(encoded)})
+        await a.get_by_text("Player portraits",exact=True).click()
+        current=await a.locator("#player").inner_text()
+        await upload(a,"Portrait for "+current,"green")
+        await expect(tv.locator("#number img")).to_have_js_property("naturalWidth",10)
         await upload(a,'Take photo for Parcel','red')
         await expect(tv.locator('#gifts img')).to_have_js_property('complete',True)
         await expect(tv.locator('#gifts img')).to_have_js_property('naturalWidth',10)
@@ -197,7 +204,7 @@ async def run():
         await expect(tv.locator('#gifts img')).not_to_have_attribute('data-photo',old)
         await expect(tv.locator('#gifts img')).to_have_js_property('naturalWidth',10)
         replacement=await tv.locator('#gifts img').first.get_attribute('data-photo')
-        assert len(set(objects.values()))==2
+        assert len(set(objects.values()))==3
         await b.get_by_role("button",name="Steal Parcel").click()
         await expect(a.locator("#pending")).to_contain_text("steal Parcel")
         await a.locator("#confirm").click()
