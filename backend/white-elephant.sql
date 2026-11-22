@@ -107,6 +107,9 @@ begin
   if exists(select 1 from unnest(roster) n group by lower(n) having count(*) > 1)
      then raise exception 'Each player needs a distinct display name'; end if;
 
+  if exists(select 1 from unnest(cohosts) h where h is null) then
+    raise exception 'Each co-host must be an active, verified family member' using errcode='22023';
+  end if;
   select array_agg(distinct h order by h) into host_ids
     from unnest(array_append(coalesce(cohosts,'{}'),auth.uid())) h where h is not null;
   payload := jsonb_build_object('names',roster,'hosts',host_ids);
@@ -119,6 +122,16 @@ begin
     select * into strict g from white_elephant.games
       where created_by=auth.uid() and start_request=request_id;
     if g.start_payload <> payload then raise exception 'Start request ID reused with different settings'; end if;
+  elsif exists (
+    select 1 from unnest(host_ids) as selected(id)
+    where not exists (
+      select 1 from auth.users u
+      join wishlist_private.family_members f on f.email = lower(u.email)
+      where u.id = selected.id and u.email_confirmed_at is not null and f.active
+    )
+  ) then
+    -- Raising here rolls back the new game. Replays above retain their saved state.
+    raise exception 'Each co-host must be an active, verified family member' using errcode='22023';
   end if;
   return white_elephant.snapshot(g);
 end;
