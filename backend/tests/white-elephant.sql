@@ -37,6 +37,7 @@ $test$;
 do $test$
 declare
   host uuid := gen_random_uuid();
+  start_id uuid := gen_random_uuid();
   peer uuid := gen_random_uuid();
   outsider uuid := gen_random_uuid();
   who uuid;
@@ -54,7 +55,20 @@ begin
     end if;
   end loop;
   perform set_config('request.jwt.claim.sub',host::text,true);
-  snapshot := public.we_start_game(array['Red','Blue','Green'],array[peer]);
+  begin perform public.we_start_game(start_id,array['Red',chr(9)]);
+  exception when raise_exception then refused := true; end;
+  assert refused, 'blank name accepted';
+  refused := false;
+  begin perform public.we_start_game(start_id,array[' Red Fox ','red'||chr(9)||'fox']);
+  exception when raise_exception then refused := true; end;
+  assert refused, 'normalized duplicate accepted';
+  refused := false;
+  snapshot := public.we_start_game(start_id,array[' Red ','Blue','Green'],array[peer]);
+  assert public.we_start_game(start_id,array['Red','Blue','Green'],array[peer,peer]) = snapshot;
+  begin perform public.we_start_game(start_id,array['Red','Blue'],array[peer]);
+  exception when raise_exception then refused := true; end;
+  assert refused, 'changed payload accepted on replay';
+  refused := false;
   game := (snapshot->>'id')::uuid;
   assert jsonb_array_length(snapshot->'revealed')=1;
   saved := snapshot->'state';
