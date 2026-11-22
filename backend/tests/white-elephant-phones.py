@@ -38,6 +38,7 @@ async def run():
             email = f"{host}@example.invalid"
             admin.execute("INSERT INTO auth.users VALUES (%s,%s,now())", (host,email))
             admin.execute("INSERT INTO wishlist_private.family_members VALUES (%s,%s,true)", (email,role))
+        admin.execute("UPDATE wishlist_private.family_members SET first_name='Robin',last_name='Winter' WHERE email=%s",(f"{host_b}@example.invalid",))
         admin.execute("NOTIFY pgrst, 'reload schema'")
 
     rest = "http://127.0.0.1:3000"
@@ -92,7 +93,7 @@ async def run():
                 objects[path]=raw
                 self.reply(200,b'{}')
                 return
-            if self.path not in ("/rest/v1/rpc/we_host_action","/rest/v1/rpc/we_pair_tv","/rest/v1/rpc/we_tv_board","/rest/v1/rpc/we_attach_photo","/rest/v1/rpc/we_start_game","/rest/v1/rpc/we_cohost_choices","/rest/v1/rpc/we_recipient_names"):
+            if self.path not in ("/rest/v1/rpc/we_host_action","/rest/v1/rpc/we_pair_tv","/rest/v1/rpc/we_tv_board","/rest/v1/rpc/we_attach_photo","/rest/v1/rpc/we_start_game","/rest/v1/rpc/we_cohost_choices","/rest/v1/rpc/we_viewer_player_names"):
                 self.send_error(404)
                 return
             body = self.rfile.read(int(self.headers["Content-Length"]))
@@ -138,10 +139,11 @@ async def run():
         start = {"request_id":str(uuid4()),"names":["Red","Blue","Green"],"cohosts":[str(host_b)]}
         a,b=phones
         await a.goto(origin+"/white-elephant-host.html")
-        await a.get_by_text("Add wishlist recipients").click()
-        await a.get_by_role("button",name="Red",exact=True).click()
-        await expect(a.locator("#names")).to_have_value("Red")
-        await a.locator("#names").fill("Red\nBlue\nGreen")
+        await a.get_by_text("Add viewer accounts").click()
+        await expect(a.get_by_role("button",name="Red",exact=True)).to_have_count(0)
+        await a.get_by_role("button",name="Robin Winter",exact=True).click()
+        await expect(a.locator("#names")).to_have_value("Robin Winter")
+        await a.locator("#names").fill("Robin Winter\nBlue\nGreen")
         await a.get_by_label(str(host_b)+"@example.invalid").check()
         await a.get_by_role("button",name="Start game").click()
         await expect(a.locator("#console")).to_be_visible()

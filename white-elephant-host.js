@@ -249,7 +249,7 @@
         const token=await getToken();
         const choices=await request('/rest/v1/rpc/we_cohost_choices',token,{});
         if(token!==session()?.access_token)return;
-        const recipients=await request('/rest/v1/rpc/we_recipient_names',token,{});
+        const recipients=await request('/rest/v1/rpc/we_viewer_player_names',token,{});
         if(token!==session()?.access_token)return;
         for(const name of recipients){
           const add=document.createElement('button');add.type='button';add.textContent=name;
