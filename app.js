@@ -72,8 +72,14 @@ function render(){
  if(welcomePage){window.wishlistWelcome?.sync({authorized,email:session?.user?.email||''});return;}
  if(adminPage){$('#welcome').hidden=authorized;return;}
  $('#wishlist').hidden=!authorized;$('#welcome').hidden=authorized;$('#gifts').replaceChildren();$('#people').replaceChildren();
+ const recipientSelect = $('#mobile-person');
+ recipientSelect.replaceChildren();
  if(!authorized)return;
  for(const p of [{id:'all',name:'Everyone',symbol:'🎁'},...data.people]){
+  const option = node('option', p.name);
+  option.value = p.id;
+  option.selected = p.id === person;
+  recipientSelect.append(option);
   const button=node('button',p.symbol+' '+p.name);button.setAttribute('aria-pressed',p.id===person);
   button.onclick=()=>{person=p.id;render();};$('#people').append(button);
  }
@@ -237,6 +243,10 @@ async function start(){try{
  if(welcomePage)await window.wishlistWelcome?.ready();
  const hash=new URLSearchParams(location.hash.slice(1));if(hash.has('access_token')){suggestPasskey=true;saveSession({access_token:hash.get('access_token'),refresh_token:hash.get('refresh_token'),expires_at:Date.now()/1000+Number(hash.get('expires_in')||3600)});history.replaceState(null,'',location.pathname+location.search);}else if(hash.has('error_description')){authFeedback('Sign-in link failed: '+hash.get('error_description'));history.replaceState(null,'',location.pathname);}
  if($('#filter'))$('#filter').onchange=render;
+ if ($('#mobile-person')) $('#mobile-person').onchange = event => {
+  person = event.target.value;
+  render();
+ };
  window.addEventListener('storage',event=>{if(event.key==='badillo-session'&&event.newValue===null){generation++;session=null;lockWishlist();notice('You’re signed out.');render();}});
  $('#login').onsubmit=async e=>{
  e.preventDefault();
