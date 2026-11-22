@@ -166,7 +166,7 @@
   }
 
   async function read() {
-    if (!config || polling || writing || document.hidden) return;
+    if (!game || !config || polling || writing || document.hidden) return;
     const version = generation;
     polling = true;
     try {
@@ -237,8 +237,16 @@
     if(!game) location.reload(); else void read();
   });
   document.addEventListener('visibilitychange', read);
-  window.addEventListener('online', read);
+  window.addEventListener('online', () => {
+    if (game) void read();
+    else if (el('setup').hidden) location.reload();
+    else el('status').textContent = '';
+  });
   window.addEventListener('offline', () => {
+    if (!game) {
+      el('status').textContent = 'Offline. Reconnect to start the game.';
+      return;
+    }
     ++generation;
     clear('Offline. Reconnecting…');
   });

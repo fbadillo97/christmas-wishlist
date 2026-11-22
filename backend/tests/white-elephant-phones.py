@@ -145,7 +145,17 @@ async def run():
               const ctx=c.getContext('2d');ctx.fillStyle=color;ctx.fillRect(0,0,10,10);return c.toDataURL().split(',')[1]}""",color)
             await page.get_by_label(label).set_input_files({'name':'gift.png','mimeType':'image/png','buffer':base64.b64decode(encoded)})
         editor = a.get_by_role("checkbox",name="Casey Host",exact=True)
+        setup_reads = []
+        a.on("request", lambda req: setup_reads.append(req.url) if req.url.endswith("/we_host_action") else None)
         await editor.check()
+        await a.evaluate("""() => {
+            document.dispatchEvent(new Event('visibilitychange'));
+            window.dispatchEvent(new Event('offline'));
+            window.dispatchEvent(new Event('online'));
+        }""")
+        await a.wait_for_timeout(300)
+        assert not setup_reads
+        await expect(editor).to_be_checked()
         await expect(a.locator("#roster-count")).to_have_text("1 contestant selected")
         await editor.uncheck()
         assert await a.evaluate("document.documentElement.scrollWidth <= innerWidth")
