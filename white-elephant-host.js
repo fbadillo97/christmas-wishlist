@@ -282,6 +282,30 @@
           link.textContent='Rejoin game';
           row.append(link,document.createTextNode(' · '+(active.paused?'Paused · ':'')+
             'Turn '+active.turn_no+' of '+active.player_count+' · '+active.player+' · '+active.id.slice(0,6)));
+          const remove=document.createElement('button');
+          remove.type='button';
+          remove.className='remove-game';
+          remove.textContent='Delete game';
+          remove.onclick=async()=>{
+            remove.disabled=true;
+            try{
+              const auth=await getToken();
+              const action=(body)=>request('/rest/v1/rpc/we_host_action',auth,{game:active.id,...body});
+              const latest=await action({command:'read',expected:null});
+              if(session()?.access_token!==auth)return;
+              if(!['done','cancelled'].includes(latest.state.phase)){
+                const description='Game '+active.id.slice(0,6)+' · Turn '+latest.state.turn+' of '+latest.player_count;
+                if(!window.confirm('Delete '+description+' from active games? This ends the game for all hosts and the TV.'))return;
+                await action({command:'cancel_game',expected:latest.revision});
+              }
+              if(session()?.access_token!==auth)return;
+              row.remove();
+              el('resume').hidden=!el('resume-list').childElementCount;
+              el('status').textContent='Game removed from active games.';
+            }catch(e){el('status').textContent=e.code==='PT409'?'Another host changed the game. Review it and try again.':e.message;}
+            finally{remove.disabled=false;}
+          };
+          row.append(remove);
           el('resume-list').append(row);
         }
         el('resume').hidden=!games.length;
