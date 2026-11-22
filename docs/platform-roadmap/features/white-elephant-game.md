@@ -143,3 +143,9 @@ The tests create synthetic identities inside the transaction and exercise a full
 ### Staged host console
 
 Open `white-elephant-host.html?game=<game UUID>` from the same site as family sign-in. Each host uses their own authorized account and the same event link. A staged game must already exist. The console polls the host RPC every two seconds while visible, confirms against the displayed revision, and reloads the current board after a conflict or reconnect. The prototype and TV display remain separate. The mobile integration check plays a game in two Chromium contexts against disposable PostgREST and PostgreSQL services.
+
+### Staged split TV display
+
+On the host console, expand **TV display**, choose **Create TV link**, and open or copy that link to the room display. Each game supports one current link. Creating another rotates the pairing, and **Disconnect TV** revokes it. A link remains valid until rotated or revoked, including after the game ends so the final board can stay visible. Anyone with the link can view that game's board.
+
+The display polls every two seconds and reads committed player, turn, gift, ownership and lock data. It uses an event-scoped token in the URL fragment and sends it only in the TV RPC request body. The database stores its digest. The TV does not sign in or receive pending moves, host identities, or unrevealed names. On loss of access it clears the board.

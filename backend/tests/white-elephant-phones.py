@@ -61,26 +61,26 @@ async def run():
                 super().do_GET()
 
         def do_POST(self):
-            if self.path != "/rest/v1/rpc/we_host_action":
+            if self.path not in ("/rest/v1/rpc/we_host_action","/rest/v1/rpc/we_pair_tv","/rest/v1/rpc/we_tv_board"):
                 self.send_error(404)
                 return
             body = self.rfile.read(int(self.headers["Content-Length"]))
-            command = json.loads(body)["command"]
-            auth = self.headers["Authorization"]
+            command = json.loads(body).get("command")
+            auth = self.headers.get("Authorization")
             if auth == "Bearer " + peer_token and command == "confirm" and not sent.is_set():
                 sent.set()
                 if not release.wait(8):
                     self.reply(504,b'{"message":"Test synchronization timed out"}')
                     return
-            request = Request(rest + "/rpc/we_host_action",data=body,
-                              headers={"Authorization":auth,"Content-Type":"application/json"})
+            request = Request(rest + self.path.removeprefix("/rest/v1"),data=body,
+                              headers={"Content-Type":"application/json", **({"Authorization":auth} if auth else {})})
             try:
                 result = urlopen(request,timeout=5)
             except HTTPError as error:
                 result = error
             with result:
                 payload = result.read()
-                if command != "read":
+                if command and command != "read":
                     attempts.append((command,result.status,json.loads(payload).get("code")))
                 self.reply(result.status,payload)
 
@@ -115,6 +115,28 @@ async def run():
             await expect(page.locator("#status")).to_have_text("Connected")
             assert await page.evaluate("document.documentElement.scrollWidth <= innerWidth")
         first_player = await a.locator("#player").inner_text()
+        await a.get_by_text("TV display", exact=True).click()
+        await a.locator("#pair-tv").click()
+        await expect(a.locator("#tv-link")).to_be_visible()
+        link = await a.locator("#tv-link").get_attribute("href")
+        tv_context = await browser.new_context(viewport={"width":1920,"height":1080})
+        tv = await tv_context.new_page()
+        await tv.goto(origin + "/" + link.removeprefix("./"))
+        await expect(tv.locator("#player")).to_have_text(first_player)
+        assert await tv.evaluate("localStorage.length === 0")
+        from urllib.parse import urlsplit, parse_qs
+        pairing = parse_qs(urlsplit(link).fragment)["token"][0]
+        guest = await pw.request.new_context(base_url=rest)
+        other_game = await api.post("/rpc/we_start_game",data={**start,"request_id":str(uuid4())})
+        assert other_game.ok
+        cross = await guest.post("/rpc/we_tv_board",data={"game":(await other_game.json())["id"],"token":pairing})
+        assert cross.status in (401,403)
+        private = await guest.post("/rpc/we_host_action",data={"game":game,"expected":0,"command":"pause"})
+        assert private.status in (401,403)
+        initial_board = await guest.post("/rpc/we_tv_board",data={"game":game,"token":pairing})
+        data = await initial_board.json()
+        assert set(data)=={"revision","paused","phase","turn","active","gifts","revealed","player_count"}
+        assert data["revealed"]==[first_player]
         await a.locator("#title").fill("Parcel")
         await a.locator("#open").click()
         await expect(b.locator("#pending")).to_contain_text("Parcel")
@@ -135,24 +157,40 @@ async def run():
             await expect(page.locator("#player")).to_have_text(first_player)
             await expect(page.locator("#gifts")).to_contain_text("1/3 steals")
             await expect(page.get_by_role("button",name="Steal Parcel")).to_have_count(0)
+        await expect(tv.locator("#player")).to_have_text(first_player)
+        await expect(tv.locator("#gifts")).to_contain_text("1/3 steals")
+        await tv.reload()
+        await expect(tv.locator("#turn")).to_have_text("Turn 2 of 3")
         await b.reload()
         await expect(b.locator("#player")).to_have_text(first_player)
         await expect(b.locator("#turn")).to_have_text("Turn 2 of 3")
         await b.get_by_role("button",name="Propose opening a gift").click()
         await a.locator("#confirm").click()
         await expect(b.locator("#turn")).to_have_text("Turn 3 of 3")
+        await a.get_by_role("button",name="Steal Parcel").click()
+        await expect(b.locator("#pending")).to_contain_text("steal Parcel")
+        await b.locator("#confirm").click()
+        await expect(tv.locator("#gifts")).to_contain_text("2/3 steals")
         await a.locator("#open").click()
         await expect(b.locator("#confirm")).to_be_visible()
         await b.locator("#confirm").click()
         await expect(a.locator("#turn")).to_have_text("Final exchange")
-        await a.get_by_role("button",name="Keep current gift").click()
-        await expect(b.locator("#pending")).to_contain_text("keep their gift")
+        await a.get_by_role("button",name="Steal Parcel").click()
+        await expect(b.locator("#pending")).to_contain_text("steal Parcel")
         await b.locator("#confirm").click()
-        for page in phones:
+        await expect(tv.locator("#gifts")).to_contain_text("Locked · 3 steals")
+        await expect(a.locator("#gifts")).to_contain_text("Locked")
+        await a.get_by_role("button",name="Take Gift 2").click()
+        await expect(b.locator("#pending")).to_contain_text("take Gift 2")
+        await b.locator("#confirm").click()
+        for page in [a,b,tv]:
             await expect(page.locator("#player")).to_have_text("Game complete")
+        await a.locator("#revoke-tv").click()
+        await expect(tv.locator("#board")).to_be_hidden()
+        await expect(tv.locator("#status")).to_contain_text("TV link unavailable")
         with psycopg.connect(os.environ["TEST_DATABASE_URL"]) as admin:
-            assert admin.execute("SELECT count(*) FROM white_elephant.history WHERE game_id=%s",(game,)).fetchone()[0]==5
-        print("Two mobile hosts synced; stale confirm recovered; displaced player acted; reload restored turn; five moves recorded; both phones showed the completed game.")
+            assert admin.execute("SELECT count(*) FROM white_elephant.history WHERE game_id=%s",(game,)).fetchone()[0]==7
+        print("Two mobile hosts synced; stale confirm recovered; displaced player acted; reload restored turn; seven moves recorded; both hosts and TV showed completion; revoked TV cleared.")
         await browser.close()
     server.shutdown()
 

@@ -626,3 +626,5 @@ body[data-view="tv"][data-layout="split"] .gift-grid.is-scrollable .gift-stat {
     animation: none;
   }
 }
+/* Two identical groups share the live display track. */
+#board .gift-scroll-track { --gift-loop-distance: calc(50% + var(--gift-loop-gap) / 2); }

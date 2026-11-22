@@ -10,6 +10,9 @@
 
   function clear(message) {
     snapshot = null;
+    el('tv-link').removeAttribute('href');
+    el('tv-link').hidden = true;
+    el('tv-message').textContent = '';
     el('console').hidden = true;
     el('controls').disabled = true;
     for (const id of ['turn','player','instruction','gifts','moves','pending','title']) {
@@ -156,6 +159,27 @@
     }
   }
 
+  async function pairTV(enable) {
+    const version = generation;
+    el('pair-tv').disabled = el('revoke-tv').disabled = true;
+    try {
+      const token = await getToken();
+      if (version !== generation) return;
+      const pairing = await request('/rest/v1/rpc/we_pair_tv', token, {game, enable});
+      if (version !== generation || token !== session()?.access_token) return;
+      const link = el('tv-link');
+      link.hidden = !pairing;
+      link.removeAttribute('href');
+      if (pairing) link.href = './white-elephant-tv.html#' + new URLSearchParams({game, token:pairing});
+      el('tv-message').textContent = pairing ? 'Open or copy this link for the TV.' : 'TV disconnected.';
+    } catch (e) {
+      if (version === generation) el('tv-message').textContent = e.message;
+    } finally {
+      el('pair-tv').disabled = el('revoke-tv').disabled = false;
+    }
+  }
+  el('pair-tv').onclick = () => pairTV(true);
+  el('revoke-tv').onclick = () => pairTV(false);
   el('open').onclick = () => write('propose','open',el('title').value.trim() || null);
   el('confirm').onclick = () => write('confirm');
   el('cancel').onclick = () => write('cancel');

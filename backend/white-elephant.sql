@@ -191,3 +191,41 @@ revoke all on function public.we_start_game(uuid,text[],uuid[]), public.we_host_
 grant usage on schema white_elephant to authenticated;
 grant execute on function white_elephant.start_game(uuid,text[],uuid[]), white_elephant.host_action(uuid,bigint,text,text,text),
   public.we_start_game(uuid,text[],uuid[]), public.we_host_action(uuid,bigint,text,text,text) to authenticated;
+
+-- One revocable TV link per game. Only its SHA-256 digest is stored.
+alter table white_elephant.games add column tv_digest bytea;
+create function white_elephant.pair_tv(game uuid, enable boolean) returns uuid
+language plpgsql security definer set search_path='' as $$
+declare token uuid;
+begin
+  if not wishlist_private.is_family_member() then
+    raise exception 'Host access required' using errcode='42501';
+  end if;
+  if enable then token := gen_random_uuid(); end if;
+  update white_elephant.games set tv_digest=sha256(uuid_send(token))
+    where id=game and auth.uid()=any(hosts);
+  if not found then raise exception 'Host access required' using errcode='42501'; end if;
+  return token;
+end;
+$$;
+create function white_elephant.tv_board(game uuid, token uuid) returns jsonb
+language plpgsql stable security definer set search_path='' as $$
+declare board jsonb;
+begin
+  select jsonb_build_object('revision', revision, 'paused', paused, 'phase', state->'phase',
+    'turn', state->'turn','active',state->'active','gifts',state->'gifts',
+    'revealed',lineup[1:(state->>'turn')::integer], 'player_count',cardinality(lineup))
+    into board from white_elephant.games where id=game and tv_digest=sha256(uuid_send(token));
+  if not found then raise exception 'TV link is unavailable' using errcode='42501'; end if;
+  return board;
+end;
+$$;
+create function public.we_pair_tv(game uuid, enable boolean) returns uuid language sql security invoker
+set search_path='' as $$select white_elephant.pair_tv(game,enable)$$;
+create function public.we_tv_board(game uuid, token uuid) returns jsonb language sql stable security invoker
+set search_path='' as $$select white_elephant.tv_board(game,token)$$;
+revoke all on function public.we_pair_tv(uuid,boolean),white_elephant.pair_tv(uuid,boolean),
+  public.we_tv_board(uuid,uuid),white_elephant.tv_board(uuid,uuid) from public,anon,authenticated;
+grant usage on schema white_elephant to anon;
+grant execute on function public.we_pair_tv(uuid,boolean),white_elephant.pair_tv(uuid,boolean) to authenticated;
+grant execute on function public.we_tv_board(uuid,uuid),white_elephant.tv_board(uuid,uuid) to anon,authenticated;

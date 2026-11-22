@@ -40,6 +40,13 @@
             <button id="pause" class="control-button" type="button">Pause game</button>
             <button id="undo" class="text-button" type="button">Undo last move</button>
           </fieldset>
+          <details><summary>TV display</summary>
+            <p>Creating a new link disconnects the previous display.</p>
+            <button id="pair-tv" type="button" class="control-button">Create TV link</button>
+            <a id="tv-link" hidden target="_blank" rel="noopener noreferrer">Open TV display</a>
+            <button id="revoke-tv" type="button" class="text-button">Disconnect TV</button>
+            <p id="tv-message" role="status"></p>
+          </details>
         </section>
       </div>
     </section>
