@@ -9,6 +9,8 @@ import threading
 import time
 import traceback
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
+from urllib.error import HTTPError
+from urllib.request import Request, urlopen
 from uuid import uuid4
 
 import psycopg
@@ -36,39 +38,65 @@ async def run():
             admin.execute("INSERT INTO wishlist_private.family_members VALUES (%s,%s,true)", (email,role))
         admin.execute("NOTIFY pgrst, 'reload schema'")
 
-    server = ThreadingHTTPServer(("127.0.0.1", 0), SimpleHTTPRequestHandler)
-    threading.Thread(target=server.serve_forever, daemon=True).start()
-    origin = f"http://127.0.0.1:{server.server_port}"
     rest = "http://127.0.0.1:3000"
+    origin = ""
+    attempts = []
+    sent, release = threading.Event(), threading.Event()
+    peer_token = test_token(host_b)
+
+    class FixtureServer(SimpleHTTPRequestHandler):
+        def reply(self, status, body):
+            self.send_response(status)
+            self.send_header("Content-Type","application/json")
+            self.send_header("Content-Length",str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def do_GET(self):
+            if self.path == "/config.json":
+                self.reply(200,json.dumps({"supabaseUrl":origin,"publishableKey":"fixture"}).encode())
+            elif self.path == "/auth/v1/user":
+                self.reply(200,b'{"id":"fixture"}')
+            else:
+                super().do_GET()
+
+        def do_POST(self):
+            if self.path != "/rest/v1/rpc/we_host_action":
+                self.send_error(404)
+                return
+            body = self.rfile.read(int(self.headers["Content-Length"]))
+            command = json.loads(body)["command"]
+            auth = self.headers["Authorization"]
+            if auth == "Bearer " + peer_token and command == "confirm" and not sent.is_set():
+                sent.set()
+                if not release.wait(8):
+                    self.reply(504,b'{"message":"Test synchronization timed out"}')
+                    return
+            request = Request(rest + "/rpc/we_host_action",data=body,
+                              headers={"Authorization":auth,"Content-Type":"application/json"})
+            try:
+                result = urlopen(request,timeout=5)
+            except HTTPError as error:
+                result = error
+            with result:
+                payload = result.read()
+                if command != "read":
+                    attempts.append((command,result.status,json.loads(payload).get("code")))
+                self.reply(result.status,payload)
+
+    server = ThreadingHTTPServer(("127.0.0.1", 0), FixtureServer)
+    origin = f"http://127.0.0.1:{server.server_port}"
+    threading.Thread(target=server.serve_forever, daemon=True).start()
     async with async_playwright() as pw:
         browser = await pw.chromium.launch()
         phones = []
-        attempts = []
-        sent, release = asyncio.Event(), asyncio.Event()
         for user, width in [(host_a, 375), (host_b, 390)]:
             ctx = await browser.new_context(viewport={"width":width,"height":812}, is_mobile=True, has_touch=True)
-            token = test_token(user)
+            token = peer_token if user == host_b else test_token(user)
             session = json.dumps({"access_token":token,"expires_at":time.time()+3600})
             await ctx.add_init_script("if (!sessionStorage.boot) {localStorage.setItem('badillo-session'," +
                                       json.dumps(session) + ");sessionStorage.boot='1'}")
             page = await ctx.new_page()
-            await page.route("**/config.json", lambda route: route.fulfill(json={"supabaseUrl":origin,"publishableKey":"fixture"}))
-            await page.route("**/auth/v1/user", lambda route: route.fulfill(json={"id":"fixture"}))
-
-            def bridge_for(host):
-                async def bridge(route):
-                    req = route.request
-                    if host == host_b and req.post_data_json["command"] == "confirm" and not sent.is_set():
-                        sent.set()
-                        await asyncio.wait_for(release.wait(), 7)
-                    response = await route.fetch(url=rest + "/rpc/we_host_action")
-                    if req.post_data_json["command"] != "read":
-                        data = await response.json()
-                        attempts.append((str(host)[-4:], req.post_data_json["command"],req.post_data_json["expected"],
-                                         response.status,data.get("code"),data.get("revision")))
-                    await route.fulfill(response=response)
-                return bridge
-            await page.route("**/rest/v1/rpc/we_host_action", bridge_for(user))
             phones.append(page)
 
         api = await pw.request.new_context(base_url=rest, extra_http_headers={"Authorization":"Bearer "+test_token(host_a)})
@@ -91,7 +119,7 @@ async def run():
         await a.locator("#open").click()
         await expect(b.locator("#pending")).to_contain_text("Parcel")
         await b.locator("#confirm").click()
-        await asyncio.wait_for(sent.wait(),3)
+        assert await asyncio.to_thread(sent.wait,3), "Second phone did not submit its confirmation"
         await a.locator("#confirm").click()
         await expect(a.locator("#turn")).to_have_text("Turn 2 of 3")
         release.set()
