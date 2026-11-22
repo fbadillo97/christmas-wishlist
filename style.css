@@ -168,3 +168,9 @@
   #gifts .actions .primary { font-weight: 650; }
   #gifts .unit-list-scroll { max-block-size: 13rem; }
 }
+
+.gift-search { margin: 12px 0; max-width: 36rem; }
+.gift-search label { display: block; margin-bottom: 3px; font-size: 14px; }
+.gift-search > div { display: flex; gap: 8px; }
+.gift-search input { flex: 1; min-width: 0; min-height: 44px; }
+#search-count { font-size: 14px; color: var(--muted); }

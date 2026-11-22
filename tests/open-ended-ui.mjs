@@ -62,3 +62,37 @@ units=[];d=setup({role:'editor'});await tick();await tick();w=d.window;w.documen
 w.document.querySelector('#gift-kind').value='idea';w.document.querySelector('#gift-kind').onchange();assert.equal(w.document.querySelector('#gift-reservation_mode').value,'open-ended');assert.equal(w.document.querySelector('#quantity-field').hidden,true);d.window.close();
 assert.ok(!requests.some(([url])=>/otp|invite/.test(url)));
 console.log('UI checks passed: open availability, notes, purchased, filters, sign-out clearing, signed-out/unapproved, editor defaults, no emails.');
+
+fixtures.people.push({id:'q',name:'Second test recipient'});
+fixtures.gifts = [
+ {id:'note',person:'p',title:'Game Set',notes:'Includes a floor puzzle',reservation_mode:'open-ended'},
+ {id:'product',person:'p',title:'Floor Puzzle',reservation_mode:'limited'},
+ {id:'other',person:'q',title:'Wooden Puzzle',reservation_mode:'open-ended'},
+ {id:'typo',person:'p',title:'Floor Puzzel',reservation_mode:'open-ended'}
+];
+d=setup();await tick();await tick();w=d.window;
+const field=w.document.querySelector('#gift-search');
+const search=query=>{
+ field.value=query;
+ field.dispatchEvent(new w.Event('input'));
+ return [...w.document.querySelectorAll('.card h3')].map(el=>el.textContent);
+};
+const before=requests.length;
+assert.deepEqual(search('Floor Puzzle'),['Floor Puzzle','Game Set','Floor Puzzel']);
+assert.ok(search('puzz').includes('Floor Puzzle'));
+assert.deepEqual(search('puzzel').slice(0,2),['Floor Puzzel','Floor Puzzle']);
+const select=w.document.querySelector('#mobile-person');
+select.value='p';select.dispatchEvent(new w.Event('change'));
+w.document.querySelector('#filter').value='available';w.document.querySelector('#filter').onchange();
+assert.deepEqual(search('puzzle'),['Game Set','Floor Puzzel']);
+assert.deepEqual(search('missing term'),[]);
+assert.match(w.document.querySelector('#gifts').textContent,/No matching gifts/);
+w.document.querySelector('#clear-search').click();
+assert.equal(field.value,'');
+assert.equal(select.value,'p');
+assert.equal(w.document.querySelector('#filter').value,'available');
+assert.equal(requests.length,before);
+search('puzzle');await w.document.querySelector('#logout').onclick();
+assert.equal(field.value,'');assert.equal(w.document.querySelector('#search-count').textContent,'');
+d.window.close();
+console.log('Gift search ranking, typing, combined filters, clearing, and sign-out passed.');

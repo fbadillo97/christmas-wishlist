@@ -63,6 +63,39 @@ async function refresh(){
  }catch(error){if(version===generation){lockWishlist();notice('Unable to open the private wishlists: '+error.message);}}
  finally{refreshing=false;if(version===generation)render();}
 }
+function searchWords(text){
+ return (text || '').normalize('NFKD').replace(/\p{M}/gu,'').toLowerCase().match(/[\p{L}\p{N}]+/gu) || [];
+}
+
+// Allow one insertion, deletion, substitution, or adjacent transposition.
+function nearWord(a,b){
+ if(a.length<4 || b.length<4 || Math.abs(a.length-b.length)>1)return false;
+ let i=0;
+ while(i<a.length && a[i]===b[i])i++;
+ if(a.length<b.length)return a.slice(i)===b.slice(i+1);
+ if(a.length>b.length)return a.slice(i+1)===b.slice(i);
+ if(a.slice(i+1)===b.slice(i+1))return true;
+ return a[i]===b[i+1] && a[i+1]===b[i] && a.slice(i+2)===b.slice(i+2);
+}
+
+function rankGift(gift,terms){
+ const title=searchWords(gift.title), notes=searchWords(gift.notes);
+ let score=0, fuzzyTerms=0;
+ for(const term of terms){
+  if(title.includes(term))score+=8;
+  else if(title.some(word=>word.startsWith(term)))score+=6;
+  else if(notes.includes(term))score+=4;
+  else if(notes.some(word=>word.startsWith(term)))score+=3;
+  else if(title.some(word=>nearWord(term,word))){score+=2;fuzzyTerms++;}
+  else if(notes.some(word=>nearWord(term,word))){score++;fuzzyTerms++;}
+  else return null;
+ }
+ const phrase=terms.join(' '), titleText=title.join(' ');
+ if(titleText===phrase)score+=8;
+ else if((' '+titleText+' ').includes(' '+phrase+' '))score+=4;
+ return {gift,score,fuzzyTerms};
+}
+
 function render(){
  window.wishlistPasskeys?.sync(authorized);
  window.wishlistEditor?.sync(data,authorized);
@@ -74,7 +107,12 @@ function render(){
  $('#wishlist').hidden=!authorized;$('#welcome').hidden=authorized;$('#gifts').replaceChildren();$('#people').replaceChildren();
  const recipientSelect = $('#mobile-person');
  recipientSelect.replaceChildren();
- if(!authorized)return;
+ if(!authorized){
+  $('#gift-search').value='';
+  $('#search-count').textContent='';
+  $('#clear-search').hidden=true;
+  return;
+ }
  for(const p of [{id:'all',name:'Everyone',symbol:'🎁'},...data.people]){
   const option = node('option', p.name);
   option.value = p.id;
@@ -86,9 +124,31 @@ function render(){
  $('#filter').disabled=!authorized;
  $('#view-all').setAttribute('aria-pressed',view==='all');$('#view-mine').setAttribute('aria-pressed',view==='mine');$('#view-mine').textContent='My selections ('+mySelections.units.length+')';
  $('#list-title').textContent=view==='mine'?'My selections':(person==='all'?'Everyone':data.people.find(p=>p.id===person).name)+'’s wishlist';
+ renderGifts();
+}
+
+function renderGifts(){
+ if(!authorized)return;
  const filter=$('#filter').value;
  const source=view==='mine'?mySelections.gifts:data.gifts,viewUnits=view==='mine'?mySelections.units:statuses;
- const gifts=source.filter(g=>person==='all'||g.person===person).filter(g=>filter==='all'||(g.reservation_mode!=='limited'&&filter==='available'&&!g.archived)||viewUnits.some(s=>s.gift_id===g.id&&s.status===filter));
+ const filtered=source.filter(g=>person==='all'||g.person===person).filter(g=>filter==='all'||(g.reservation_mode&&g.reservation_mode!=='limited'&&filter==='available'&&!g.archived)||viewUnits.some(s=>s.gift_id===g.id&&s.status===filter));
+ const query=$('#gift-search').value.trim();
+ const terms=searchWords(query);
+ let gifts=filtered;
+ if(query){
+  const ranked=terms.length?filtered.map(g=>rankGift(g,terms)).filter(Boolean):[];
+  ranked.sort((a,b)=>a.fuzzyTerms-b.fuzzyTerms || b.score-a.score);
+  gifts=ranked.map(result=>result.gift);
+ }
+ $('#clear-search').hidden=!$('#gift-search').value;
+ $('#search-count').textContent=query?gifts.length+' matching gift'+(gifts.length===1?'':'s'):'';
+ $('#gifts').replaceChildren();
+ if(query && !gifts.length){
+  const empty=node('div',null,'empty');
+  empty.append(node('h3','No matching gifts'),node('p','Try a different word or change your filters.'));
+  $('#gifts').append(empty);
+  return;
+ }
  if(!gifts.length){
   const empty=node('div',null,'empty');
   empty.append(node('div','✧'),node('h3',view==='mine'?'No selections in this view':data.gifts.length?'No gifts in this view':'Good things are on their way.'),node('p',view==='mine'?'Your reserved and purchased gifts appear here. Try Everyone’s wishlist to choose a gift, or change the filters.':data.gifts.length?'Try another person or availability filter.':'We’re gathering gift ideas. Check back soon.'),node('p','No gifts are expected. Your company is the best present.'));
@@ -257,6 +317,14 @@ async function start(){try{
  if(config.supabaseUrl&&!/^https:\/\/[a-z0-9-]+\.supabase\.co$/.test(config.supabaseUrl))throw Error('Invalid backend URL');
  if(welcomePage)await window.wishlistWelcome?.ready();
  const hash=new URLSearchParams(location.hash.slice(1));if(hash.has('access_token')){suggestPasskey=true;saveSession({access_token:hash.get('access_token'),refresh_token:hash.get('refresh_token'),expires_at:Date.now()/1000+Number(hash.get('expires_in')||3600)});history.replaceState(null,'',location.pathname+location.search);}else if(hash.has('error_description')){authFeedback('Sign-in link failed: '+hash.get('error_description'));history.replaceState(null,'',location.pathname);}
+ if($('#gift-search')){
+  $('#gift-search').oninput=renderGifts;
+  $('#clear-search').onclick=()=>{
+   $('#gift-search').value='';
+   renderGifts();
+   $('#gift-search').focus();
+  };
+ }
  if($('#filter'))$('#filter').onchange=render;
  if ($('#mobile-person')) $('#mobile-person').onchange = event => {
   person = event.target.value;
