@@ -249,13 +249,34 @@
         const token=await getToken();
         const choices=await request('/rest/v1/rpc/we_cohost_choices',token,{});
         if(token!==session()?.access_token)return;
-        const recipients=await request('/rest/v1/rpc/we_recipient_names',token,{});
+        const recipients=await request('/rest/v1/rpc/we_viewer_choices',token,{});
         if(token!==session()?.access_token)return;
-        for(const name of recipients){
+        for(const viewer of recipients){
+          const name=viewer.name;
           const add=document.createElement('button');add.type='button';add.textContent=name;
           add.onclick=()=>{const names=el('names');const list=names.value.split('\n').map(n=>n.trim()).filter(Boolean);
             if(!list.some(n=>n.toLowerCase()===name.toLowerCase()))names.value=[...list,name].join('\n');editPortraits();};
-          el('recipients').append(add);
+          const row=document.createElement('div'),label=document.createElement('label'),file=document.createElement('input');
+          const use=document.createElement('button');use.type='button';use.textContent='Use saved photo for this game';use.hidden=!viewer.has_photo;
+          file.type='file';file.accept='image/*';label.textContent='Account photo';file.setAttribute('aria-label','Save account photo for '+name);
+          file.onchange=async()=>{
+            try{
+              const jpeg=await giftPhotos.compress(file.files[0]),bytes=new Uint8Array(await jpeg.arrayBuffer());
+              let binary='';for(const byte of bytes)binary+=String.fromCharCode(byte);
+              await request('/rest/v1/rpc/we_account_portrait',await getToken(),{id:viewer.id,image:btoa(binary),write_photo:true});
+              use.hidden=false;el('status').textContent='Account photo saved.';
+            }catch(e){el('status').textContent=e.message;}
+            file.value='';
+          };
+          use.onclick=async()=>{
+            try{
+              const auth=await getToken(),encoded=await request('/rest/v1/rpc/we_account_portrait',auth,{id:viewer.id});
+              if(!encoded || session()?.access_token!==auth)return;
+              add.click();setupPhotos.set(name,new Blob([Uint8Array.from(atob(encoded),c=>c.charCodeAt(0))],{type:'image/jpeg'}));
+              editPortraits();el('status').textContent='Portrait selected for '+name+'.';
+            }catch(e){el('status').textContent=e.message;}
+          };
+          label.append(file);row.append(add,label,use);el('recipients').append(row);
         }
         for(const person of choices){
           const label=document.createElement('label'), box=document.createElement('input');

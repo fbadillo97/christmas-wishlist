@@ -38,6 +38,7 @@ async def run():
             email = f"{host}@example.invalid"
             admin.execute("INSERT INTO auth.users VALUES (%s,%s,now())", (host,email))
             admin.execute("INSERT INTO wishlist_private.family_members VALUES (%s,%s,true)", (email,role))
+        admin.execute("UPDATE wishlist_private.family_members SET first_name='Robin',last_name='Winter' WHERE email=%s",(f"{host_b}@example.invalid",))
         admin.execute("NOTIFY pgrst, 'reload schema'")
 
     rest = "http://127.0.0.1:3000"
@@ -92,7 +93,7 @@ async def run():
                 objects[path]=raw
                 self.reply(200,b'{}')
                 return
-            if self.path not in ("/rest/v1/rpc/we_host_action","/rest/v1/rpc/we_pair_tv","/rest/v1/rpc/we_tv_board","/rest/v1/rpc/we_attach_photo","/rest/v1/rpc/we_start_game","/rest/v1/rpc/we_cohost_choices","/rest/v1/rpc/we_recipient_names"):
+            if self.path not in ("/rest/v1/rpc/we_host_action","/rest/v1/rpc/we_pair_tv","/rest/v1/rpc/we_tv_board","/rest/v1/rpc/we_attach_photo","/rest/v1/rpc/we_start_game","/rest/v1/rpc/we_cohost_choices","/rest/v1/rpc/we_viewer_player_names","/rest/v1/rpc/we_viewer_choices","/rest/v1/rpc/we_account_portrait"):
                 self.send_error(404)
                 return
             body = self.rfile.read(int(self.headers["Content-Length"]))
@@ -138,10 +139,16 @@ async def run():
         start = {"request_id":str(uuid4()),"names":["Red","Blue","Green"],"cohosts":[str(host_b)]}
         a,b=phones
         await a.goto(origin+"/white-elephant-host.html")
-        await a.get_by_text("Add wishlist recipients").click()
-        await a.get_by_role("button",name="Red",exact=True).click()
-        await expect(a.locator("#names")).to_have_value("Red")
-        await a.locator("#names").fill("Red\nBlue\nGreen")
+        async def upload(page,label,color):
+            encoded=await page.evaluate("""color=>{const c=document.createElement('canvas'); c.width=c.height=10;
+              const ctx=c.getContext('2d');ctx.fillStyle=color;ctx.fillRect(0,0,10,10);return c.toDataURL().split(',')[1]}""",color)
+            await page.get_by_label(label).set_input_files({'name':'gift.png','mimeType':'image/png','buffer':base64.b64decode(encoded)})
+        await a.get_by_text("Add viewer accounts").click()
+        await expect(a.get_by_role("button",name="Red",exact=True)).to_have_count(0)
+        await upload(a,"Save account photo for Robin Winter","yellow")
+        await a.get_by_role("button",name="Use saved photo for this game").click()
+        await expect(a.locator("#names")).to_have_value("Robin Winter")
+        await a.locator("#names").fill("Robin Winter\nBlue\nGreen")
         await a.get_by_label(str(host_b)+"@example.invalid").check()
         await a.get_by_role("button",name="Start game").click()
         await expect(a.locator("#console")).to_be_visible()
@@ -188,10 +195,6 @@ async def run():
         except AssertionError as exc:
             raise AssertionError(f"Host RPC responses {attempts}; board: {await b.locator('main').inner_text()}") from exc
         await expect(b.locator("#turn")).to_have_text("Turn 2 of 3")
-        async def upload(page,label,color):
-            encoded=await page.evaluate("""color=>{const c=document.createElement('canvas'); c.width=c.height=10;
-              const ctx=c.getContext('2d');ctx.fillStyle=color;ctx.fillRect(0,0,10,10);return c.toDataURL().split(',')[1]}""",color)
-            await page.get_by_label(label).set_input_files({'name':'gift.png','mimeType':'image/png','buffer':base64.b64decode(encoded)})
         await a.get_by_text("Player portraits",exact=True).click()
         current=await a.locator("#player").inner_text()
         await upload(a,"Portrait for "+current,"green")
@@ -204,7 +207,7 @@ async def run():
         await expect(tv.locator('#gifts img')).not_to_have_attribute('data-photo',old)
         await expect(tv.locator('#gifts img')).to_have_js_property('naturalWidth',10)
         replacement=await tv.locator('#gifts img').first.get_attribute('data-photo')
-        assert len(set(objects.values()))==3
+        assert len(set(objects.values()))==4
         await b.get_by_role("button",name="Steal Parcel").click()
         await expect(a.locator("#pending")).to_contain_text("steal Parcel")
         await a.locator("#confirm").click()
