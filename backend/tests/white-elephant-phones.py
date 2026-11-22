@@ -313,11 +313,13 @@ async def run():
         removable=parse_qs(urlsplit(a.url).query)["game"][0]
         await a.goto(origin+"/white-elephant-host.html")
         row=a.locator("#resume-list p").filter(has=a.locator('a[href="?game='+removable+'"]'))
-        a.once("dialog",lambda dialog: dialog.dismiss())
-        await row.get_by_role("button",name="Delete game").click()
-        await expect(row).to_be_visible()
-        a.once("dialog",lambda dialog: dialog.accept())
-        await row.get_by_role("button",name="Delete game").click()
+        async with a.expect_event("dialog") as dismissed:
+            await row.get_by_role("button",name="Delete game").click()
+        await (await dismissed.value).dismiss()
+        await expect(row.get_by_role("button")).to_be_enabled()
+        async with a.expect_event("dialog") as accepted:
+            await row.get_by_role("button",name="Delete game").click()
+        await (await accepted.value).accept()
         await expect(row).to_have_count(0)
         await a.reload()
         await expect(a.locator("#setup")).to_be_visible()
