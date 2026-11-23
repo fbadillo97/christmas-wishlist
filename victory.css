@@ -1,0 +1,19 @@
+#victory{box-sizing:border-box;position:fixed;inset:0;z-index:10;overflow:auto;display:flex;flex-direction:column;align-items:center;justify-content:safe center;gap:1.45vh;padding:4vh 5vw;color:#fff4d7;text-align:center;font:600 clamp(17px,1.55vw,62px)/1.2 system-ui,sans-serif;background:radial-gradient(ellipse at 50% 25%,#235749,#102f28 67%);border:1.1vh double #cba857}
+#victory[hidden]{display:none}#victory *{box-sizing:border-box}#victory h1,#victory h2,#victory p{margin:0}
+.victory-title{font:900 clamp(42px,6vw,220px)/1 Georgia,serif;color:#fff3cf;text-shadow:0 .06em #85522e}
+.victory-eyebrow,.victory-score,.score,.page-count{color:#f1cc7e}.victory-eyebrow,.page-count{font:700 .85em monospace;letter-spacing:.12em}
+.victory-mascot{width:clamp(64px,9vw,330px);height:13vh;object-fit:contain;image-rendering:pixelated;animation:award-hop 1.6s ease-in-out infinite}
+#victory[data-scene=opening] .victory-mascot,#victory[data-scene=finale] .victory-mascot{width:24vw;height:32vh}
+.victory-stars{font-size:4em;color:#ffd17a;animation:award-hop 1s infinite alternate}
+.victory-grid,.victory-totals,.results-awards{width:100%;display:flex;justify-content:center;gap:1vw}.victory-grid{flex-wrap:wrap}
+.victory-card,.summary,.victory-totals>div{min-width:0;background:#fffae9;color:#173e33;padding:1.2vh 1vw;border:2px solid #c9a65e;border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.55vh;overflow-wrap:anywhere}
+.victory-grid>.victory-card{flex:0 1 29%;animation:award-enter .35s ease-out}
+.victory-grid>.victory-card:only-child{flex-basis:45%}.victory-art{width:6.5vh;height:6.5vh;flex:none;border-radius:50%;display:grid;place-items:center;overflow:hidden;background:#861f33;color:#fff1bc;font:900 1.2em Georgia}
+.victory-card:only-child .victory-art{width:13vh;height:13vh}.victory-art img{width:100%;height:100%;object-fit:cover}.victory-card strong{font:700 1.22em Georgia,serif}
+.victory-caption{font:italic 1.3em Georgia,serif}.victory-score{font-weight:800}.victory-totals>div{flex:1}.victory-totals b{font:800 2em Georgia}.victory-totals span{font-size:.8em}
+.victory-meter{display:flex;gap:3px}.victory-meter i{width:1.2em;height:.35em;background:#d3c7aa}.victory-meter .filled{background:#ac2837}
+#victory[data-scene=dashboard]{gap:1.4vh;padding:2vh 3vw}.results-awards{align-items:stretch}.summary{flex:1;justify-content:flex-start}.summary h2,.ownership-title{font:700 1.35em Georgia}.summary .score,.summary small{color:#744422;font-size:.74em}.summary .victory-card{width:100%;padding:.35vh;border:0;gap:.15vh}.summary .victory-art{width:4vh;height:4vh}.summary .victory-card strong{font-size:1em}.summary .victory-card span,.chain-members{font-size:.85em}.ownership .victory-card{display:grid;grid-template-columns:auto 1fr;gap:.2vh .7vw;text-align:left}.ownership .victory-art{grid-row:1 / span 4}.ownership .victory-card small{color:#8a2231}
+@keyframes award-hop{50%{transform:translateY(-.6vh) rotate(-2deg)}}@keyframes award-enter{from{opacity:0;transform:translateY(1vh)}}@media(prefers-reduced-motion:reduce){#victory *{animation:none!important}}
+
+.victory-confetti{position:absolute;inset:0;overflow:hidden;pointer-events:none}.victory-confetti i{position:absolute;left:var(--x);top:-5%;color:#e7bd60;animation:confetti-fall 4s linear infinite;animation-delay:var(--delay)}.victory-confetti i:nth-child(3n){color:#e15b62}.victory-trophy{width:5vh;height:5vh;image-rendering:pixelated}
+@keyframes confetti-fall{to{transform:translate(2vw,105vh) rotate(180deg)}}@media(prefers-reduced-motion:reduce){.victory-confetti i{top:8%}}
