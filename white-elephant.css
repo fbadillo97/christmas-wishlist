@@ -646,3 +646,36 @@ body[data-view="tv"] .player-token > img {
   object-fit: cover;
   object-position: center;
 }
+
+/* The player determines the height of the shared TV row. Size each gift row
+   from the remaining space below the Opened gifts heading. */
+@media (min-width:701px) {
+  body[data-view="tv"][data-layout="split"] .spotlight {align-self:stretch;}
+  body[data-view="tv"][data-layout="split"] #gifts {
+    --gift-loop-gap:clamp(10px,1vw,22px);
+    align-self:stretch;
+    height:auto;
+    min-height:0;
+    max-height:none;
+    container-type:size;
+    gap:var(--gift-loop-gap);
+    grid-template-rows:repeat(3,minmax(0,1fr));
+  }
+  body[data-view="tv"][data-layout="split"] #gifts .gift-card {
+    height:calc((100cqh - 2 * var(--gift-loop-gap)) / 3);
+    min-height:0;
+    grid-template-columns:minmax(0,40%) minmax(0,1fr);
+    overflow:hidden;
+  }
+  body[data-view="tv"][data-layout="split"] #gifts .gift-art {
+    height:100%;width:100%;min-height:0;aspect-ratio:auto;
+    font-size:clamp(34px,9cqw,96px);
+  }
+  body[data-view="tv"][data-layout="split"] #gifts .gift-name {
+    font-size:clamp(17px,3cqw,38px);overflow-wrap:anywhere;
+  }
+  body[data-view="tv"][data-layout="split"] #gifts .gift-owner,
+  body[data-view="tv"][data-layout="split"] #gifts .gift-stat {
+    font-size:clamp(13px,2cqw,25px);white-space:normal;overflow-wrap:anywhere;
+  }
+}

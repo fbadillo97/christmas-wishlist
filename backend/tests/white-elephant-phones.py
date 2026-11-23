@@ -287,6 +287,28 @@ async def run():
         await expect(tv.locator("#announcement")).to_have_attribute("data-kind","steal")
         await expect(tv.locator("#announcement")).to_contain_text("Stole Coffee Maker!")
         await expect(tv.locator("#gifts")).to_contain_text("1/3 steals")
+        layout=await tv_context.new_page()
+        sample=await guest.post("/rpc/we_tv_board",data={"game":game,"token":pairing})
+        board=await sample.json()
+        gift=next(iter(board["gifts"].values()))
+        for count in [6,8]:
+            board["gifts"]={str(i):{**gift,"title":"Gift "+str(i),"photo":None} for i in range(count)}
+            await layout.route("**/rpc/we_tv_board",lambda route: route.fulfill(json=board))
+            await layout.goto(tv.url)
+            await layout.reload()
+            await expect(layout.locator("#count")).to_have_text(str(count))
+            for width,height in [(1920,1080),(3840,2160)]:
+                await layout.set_viewport_size({"width":width,"height":height})
+                assert await layout.locator("#gifts").evaluate("""grid => {
+                    const bounds=grid.getBoundingClientRect(),panel=document.querySelector('.spotlight').getBoundingClientRect();
+                    const card=grid.querySelector('.gift-card').getBoundingClientRect();
+                    const gap=parseFloat(getComputedStyle(grid).rowGap);
+                    return Math.abs(bounds.bottom-panel.bottom)<2 &&
+                        Math.abs(bounds.height-(3*card.height+2*gap))<3 &&
+                        Math.abs(document.querySelector('.board-section-heading').getBoundingClientRect().top-panel.top)<2;
+                }""")
+            await layout.unroute("**/rpc/we_tv_board")
+        await layout.close()
         await tv.reload()
         await expect(tv.locator('#gifts img')).to_have_attribute('data-photo',replacement)
         await expect(tv.locator('#gifts img')).to_have_js_property('naturalWidth',10)
