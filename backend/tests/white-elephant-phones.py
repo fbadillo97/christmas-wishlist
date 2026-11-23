@@ -235,7 +235,8 @@ async def run():
         await expect(tv.locator("#announcement")).to_have_attribute("data-kind","open")
         await expect(tv.locator("#announcement")).to_contain_text("A New Gift Is Being Opened!")
         badge=tv.locator("#number")
-        await expect(badge.locator("img")).to_have_count(0)
+        # The randomized player may already have a setup photo. Exercise initials first.
+        await badge.evaluate("badge => badge.textContent = 'AB'")
         initial_panel=await tv.locator(".spotlight").bounding_box()
         assert (await badge.bounding_box())["width"]==576
         await upload(a,"Portrait for "+current,"green")
