@@ -286,7 +286,7 @@ async def run():
         await expect(tv.locator("#player")).to_have_text(first_player)
         await expect(tv.locator("#announcement")).to_have_attribute("data-kind","steal")
         await expect(tv.locator("#announcement")).to_contain_text("Stole Coffee Maker!")
-        await expect(tv.locator("#gifts .steal-meter .filled")).to_have_count(1)
+        await expect(tv.locator("#gifts .steal-meter[data-count='1']")).to_have_count(1)
         await expect(tv.locator("#gifts")).to_contain_text("1/3 steals")
         layout=await tv_context.new_page()
         sample=await guest.post("/rpc/we_tv_board",data={"game":game,"token":pairing})
@@ -323,6 +323,7 @@ async def run():
         await a.get_by_role("button",name="Player Chose to Steal Coffee Maker").click()
         await expect(b.locator("#pending")).to_have_text("Waiting to confirm that the player stole Coffee Maker.")
         await b.locator("#confirm").click()
+        await expect(tv.locator("#gifts .steal-meter[data-count='2']")).to_have_count(1)
         await expect(tv.locator("#gifts")).to_contain_text("2/3 steals")
         await a.locator("#open").click()
         await expect(b.locator("#confirm")).to_be_visible()
@@ -343,7 +344,9 @@ async def run():
                 gift.right<=bounds.right && gift.top>=bounds.top && gift.bottom<=bounds.bottom &&
                 bounds.right<=board.left && getComputedStyle(panel.querySelector('.show-padlock')).animationName==='none';
         }""")
-        await expect(tv.locator("#gifts .gift-locked .steal-meter .filled")).to_have_count(3)
+        locked_bar=tv.locator("#gifts .gift-locked .steal-meter[data-count='3'] .steal-fill")
+        await expect(locked_bar).to_have_css("background-color","rgb(171, 48, 52)")
+        assert await locked_bar.evaluate("fill => fill.offsetWidth === fill.parentElement.clientWidth")
         await expect(tv.locator("#gifts")).to_contain_text("Locked · 3 steals")
         await expect(a.locator("#gifts")).to_contain_text("Locked")
         await a.get_by_role("button",name="Take Gift 2").click()

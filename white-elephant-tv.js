@@ -45,7 +45,8 @@
         node('p','gift-stat',g.steals >= 3 ? 'Locked · 3 steals' : g.steals + '/3 steals'));
       const meter=node('div','steal-meter');
       meter.setAttribute('aria-hidden','true');
-      for(let step=1;step<=3;step++) meter.append(node('span',step<=g.steals?'filled':''));
+      meter.dataset.count=String(g.steals);
+      meter.append(node('span','steal-fill'));
       info.append(meter);
       card.classList.toggle('gift-locked',g.steals>=3);
       if(revision!==null && b.last_move?.revision>revision && b.last_move.gift===key &&
