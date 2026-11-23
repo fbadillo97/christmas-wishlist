@@ -13,6 +13,7 @@
     return n;
   }
   function reset(message) {
+    victory.disconnect();
     tvAnnouncements.clear();
     revision = null;
     el('board').hidden = true;
@@ -88,6 +89,9 @@
         reset('Game cancelled.');
         return;
       }
+      if (victory.update(b,(box,item)=>giftPhotos.show(box,item,config,game,null,token))) {
+        tvAnnouncements.clear(); el('board').hidden=true; el('status').textContent=''; revision=b.revision; return;
+      }
       const state=JSON.stringify([b.gifts,b.portraits]);
       tvAnnouncements.update(b,revision,(parent,gift)=>giftPhotos.show(parent,gift,config,game,null,token));
       if(revision!==b.revision || state!==giftState) render(b);
@@ -104,3 +108,4 @@
     window.addEventListener('online',refresh);
   } else reset('Open a TV link from the host console.');
 })();
+

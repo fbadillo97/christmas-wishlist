@@ -70,6 +70,7 @@
       el('return-setup').hidden = false;
       return;
     }
+    el('ceremony-controls').hidden = phase !== 'done';
     el('cancel-game').hidden = phase === 'done';
     el('return-setup').hidden = phase !== 'done';
     const name = n => s.revealed[n - 1];
@@ -272,6 +273,7 @@
   };
   el('cancel').onclick = () => write('cancel');
   el('pause').onclick = () => write(snapshot.paused ? 'resume' : 'pause');
+  for (const command of ['awards_next','awards_skip','awards_replay']) el(command).onclick = () => void write(command);
   el('undo').onclick = () => { if (window.confirm('Undo the last confirmed move?')) void write('undo'); };
   window.addEventListener('storage', event => {
     if (event.key !== sessionKey && event.key !== null) return;
@@ -479,3 +481,4 @@
   };
   void start();
 })();
+
