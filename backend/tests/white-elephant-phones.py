@@ -365,11 +365,24 @@ async def run():
         await expect(tv.locator("#victory")).to_contain_text("Final results")
         await expect(tv.locator(".victory-totals")).to_contain_text("3Successful steals")
         await expect(tv.locator(".victory-totals")).to_contain_text("1Locked gifts")
+        a.once("dialog",lambda dialog: dialog.accept())
+        await a.locator("#undo").click()
+        await expect(tv.locator("#board")).to_be_visible()
+        await a.get_by_role("button",name="Take Gift 2").click()
+        await expect(b.locator("#confirm")).to_be_visible()
+        await b.locator("#confirm").click()
+        await expect(tv.locator("#victory")).to_be_visible()
+        completed=await guest.post("/rpc/we_tv_board",data={"game":game,"token":pairing})
+        history=(await completed.json())["moves"]
+        assert len(history)==7
+        steals=[move for move in history if move["kind"]=="steal"]
+        assert len(steals)==3 and sum(move["phase"]=="final" for move in steals)==1
+        assert all(move["actor"]!=move["displaced"] for move in steals)
         await a.locator("#revoke-tv").click()
         await expect(tv.locator("#board")).to_be_hidden()
         await expect(tv.locator("#status")).to_contain_text("TV link unavailable")
         with psycopg.connect(os.environ["TEST_DATABASE_URL"]) as admin:
-            assert admin.execute("SELECT count(*) FROM white_elephant.history WHERE game_id=%s",(game,)).fetchone()[0]==7
+            assert admin.execute("SELECT count(*) FROM white_elephant.history WHERE game_id=%s and undone_at is null",(game,)).fetchone()[0]==7
         print("Two mobile hosts synced; stale confirm recovered; displaced player acted; reload restored turn; seven moves recorded; both hosts and TV showed completion; revoked TV cleared.")
         await a.locator("#return-setup").click()
         await a.locator("#guests").fill("Amber\nSilver\nGold")

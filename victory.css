@@ -17,3 +17,9 @@
 
 .victory-confetti{position:absolute;inset:0;overflow:hidden;pointer-events:none}.victory-confetti i{position:absolute;left:var(--x);top:-5%;color:#e7bd60;animation:confetti-fall 4s linear infinite;animation-delay:var(--delay)}.victory-confetti i:nth-child(3n){color:#e15b62}.victory-trophy{width:5vh;height:5vh;image-rendering:pixelated}
 @keyframes confetti-fall{to{transform:translate(2vw,105vh) rotate(180deg)}}@media(prefers-reduced-motion:reduce){.victory-confetti i{top:8%}}
+#victory[data-scene=dashboard]{font-size:clamp(15px,1.18vw,48px);gap:1vh}
+#victory[data-scene=dashboard] .victory-title{font-size:clamp(36px,4vw,150px)}
+#victory[data-scene=dashboard] .victory-art{width:4.3vh;height:4.3vh}
+#victory[data-scene=dashboard] .summary{padding:.65vh .7vw}
+#victory[data-scene=dashboard] .summary .victory-art{width:3vh;height:3vh}
+#victory[data-scene=dashboard] .ownership .victory-card{padding:.7vh .85vw}

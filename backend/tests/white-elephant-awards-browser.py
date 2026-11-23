@@ -38,11 +38,19 @@ with sync_playwright() as pw:
         if n==18:shot('total-chaos')
         page.clock.fast_forward(4100)
         assert page.locator('h1').inner_text()=='Final results'
-        if n==18:shot('final-results')
+        if n==18:
+            assert page.locator('#victory').evaluate('n => n.scrollHeight <= n.clientHeight + 2')
+            shot('final-results')
         for index in range(4):
             names=set()
             for _ in range(max(1,(n+1)//2)):
                 names.update(page.locator('.summary').nth(index).locator('strong').all_text_contents())
                 page.clock.fast_forward(4500)
             assert len(names)==n
+    page.evaluate('''() => {
+        board.revealed[0]='Alexandria Elizabeth Montgomery-Winterbourne';
+        board.gifts[1].title='Holiday espresso machine with the extra-long gift name';
+        board.ceremony.skip=true;send();
+    }''')
+    assert 'Holiday espresso' in page.locator('.ownership').inner_text()
     browser.close()
