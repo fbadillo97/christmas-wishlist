@@ -4,8 +4,8 @@
 .host-idle {position:absolute;left:2.5%;bottom:3%;width:clamp(64px,8vw,200px);height:auto;pointer-events:none;}
 .spotlight:has(#announcement:not([hidden])) .host-idle {visibility:hidden;}
 #announcement::after {
-  content:"";position:absolute;pointer-events:none;left:3%;bottom:8%;
-  width:clamp(72px,22cqw,320px);height:42%;
+  content:"";position:absolute;pointer-events:none;left:2%;bottom:3%;
+  width:clamp(72px,16cqw,250px);height:42%;
   background:var(--host-pose) left bottom / contain no-repeat;
 }
 #announcement[data-kind=open] {--host-pose:url("./assets/mascot/open.png");}
@@ -20,3 +20,5 @@
 @keyframes host-cheer {0%{transform:translateY(0)}1%,100%{background-image:url("./assets/mascot/lock.png")}55%{transform:translateY(-8%)}}
 @media(prefers-reduced-motion:reduce){#announcement[data-kind=lock]{--host-pose:url("./assets/mascot/lock.png");}}
 @media(max-width:700px){.host-idle{width:48px;bottom:auto;top:12px;}#announcement::after{width:14cqw;bottom:4%;}}
+
+#announcement .show-caption {max-width:66%;}
