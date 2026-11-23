@@ -234,12 +234,17 @@ async def run():
         current=await a.locator("#player").inner_text()
         await expect(tv.locator("#announcement")).to_have_attribute("data-kind","open")
         await expect(tv.locator("#announcement")).to_contain_text("A New Gift Is Being Opened!")
+        badge=tv.locator("#number")
+        await expect(badge.locator("img")).to_have_count(0)
+        initial_panel=await tv.locator(".spotlight").bounding_box()
+        assert (await badge.bounding_box())["width"]==576
         await upload(a,"Portrait for "+current,"green")
         await expect(tv.locator("#number img")).to_have_js_property("naturalWidth",10)
+        assert await tv.locator(".spotlight").bounding_box()==initial_panel
         assert await tv.locator("#number").evaluate("""badge => {
             const img = badge.querySelector('img');
             const rect = badge.getBoundingClientRect();
-            return rect.width === 384 && Math.abs(rect.width - rect.height) < 1 &&
+            return rect.width === 576 && Math.abs(rect.width - rect.height) < 1 &&
                 img.clientWidth === badge.clientWidth && img.clientHeight === badge.clientHeight &&
                 getComputedStyle(img).objectFit === 'cover' && getComputedStyle(badge).overflow === 'hidden';
         }""")
