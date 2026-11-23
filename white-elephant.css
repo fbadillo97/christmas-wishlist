@@ -629,10 +629,11 @@ body[data-view="tv"][data-layout="split"] .gift-grid.is-scrollable .gift-stat {
 /* Two identical groups share the live display track. */
 #board .gift-scroll-track { --gift-loop-distance: calc(50% + var(--gift-loop-gap) / 2); }
 
-/* Fill the player badge using the photo's native proportions. */
-body[data-view="tv"][data-layout="split"] .player-token:has(img) {
+/* Reserve the portrait space for every turn, including the initials fallback. */
+body[data-view="tv"][data-layout="split"] .player-token {
   position: relative;
-  width: min(384px, 100%, 46vh);
+  width: min(576px, 100%, 54vh);
+  font-size: clamp(48px, 10vh, 128px);
   aspect-ratio: 1;
   overflow: hidden;
 }

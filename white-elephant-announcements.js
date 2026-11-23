@@ -1,5 +1,5 @@
 const tvAnnouncements = (() => {
-  const duration = {open:2500, steal:3000, lock:4000};
+  const duration = {open:7500, steal:9000, lock:12000};
   const panel = document.getElementById('announcement');
   let timer, playing, openingGift;
   function clear() {
