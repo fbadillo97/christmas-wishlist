@@ -1,0 +1,24 @@
+.host-emblem,.host-idle,#announcement::after {image-rendering:pixelated;}
+.brand .host-emblem {vertical-align:middle;margin-right:.35em;object-fit:contain;}
+.board-top h2 .host-emblem {width:.96em;height:.96em;object-fit:contain;vertical-align:-.10em;margin-right:.25em;}
+.host-idle {position:absolute;left:2.5%;bottom:3%;width:clamp(64px,8vw,200px);height:auto;pointer-events:none;}
+.spotlight:has(#announcement:not([hidden])) .host-idle {visibility:hidden;}
+#announcement::after {
+  content:"";position:absolute;pointer-events:none;left:2%;bottom:3%;
+  width:clamp(72px,16cqw,250px);height:42%;
+  background:var(--host-pose) left bottom / contain no-repeat;
+}
+#announcement[data-kind=open] {--host-pose:url("./assets/mascot/open.png");}
+#announcement[data-kind=steal],#announcement[data-kind=lock] {--host-pose:url("./assets/mascot/steal.png");}
+@media(prefers-reduced-motion:no-preference){
+  #announcement[data-kind=open]::after {animation:host-present .65s ease-out;}
+  #announcement[data-kind=steal]::after {animation:host-tug .65s ease-out;}
+  #announcement[data-kind=lock]::after {animation:host-tug .65s ease-out,host-cheer .45s 1.25s forwards;}
+}
+@keyframes host-present {from{transform:translateY(7%)}}
+@keyframes host-tug {45%{transform:translateX(8%) rotate(4deg)}75%{transform:translateX(-4%) rotate(-3deg)}}
+@keyframes host-cheer {0%{transform:translateY(0)}1%,100%{background-image:url("./assets/mascot/lock.png")}55%{transform:translateY(-8%)}}
+@media(prefers-reduced-motion:reduce){#announcement[data-kind=lock]{--host-pose:url("./assets/mascot/lock.png");}}
+@media(max-width:700px){.host-idle{width:48px;bottom:auto;top:12px;}#announcement::after{width:14cqw;bottom:4%;}}
+
+#announcement .show-caption {max-width:66%;}
