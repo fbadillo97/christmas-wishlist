@@ -38,11 +38,18 @@
     const looping = gifts.length > 6;
     grid.classList.toggle('is-scrollable',looping);
     const group = node('div','gift-grid-group');
-    for (const g of gifts) {
+    for (const [key,g] of Object.entries(b.gifts)) {
       const card = node('article','gift-card');
       const info = node('div','gift-info');
       info.append(node('h4','gift-name',g.title),node('p','gift-owner',b.revealed[g.owner-1] || 'Available'),
         node('p','gift-stat',g.steals >= 3 ? 'Locked · 3 steals' : g.steals + '/3 steals'));
+      const meter=node('div','steal-meter');
+      meter.setAttribute('aria-hidden','true');
+      for(let step=1;step<=3;step++) meter.append(node('span',step<=g.steals?'filled':''));
+      info.append(meter);
+      card.classList.toggle('gift-locked',g.steals>=3);
+      if(revision!==null && b.last_move?.revision>revision && b.last_move.gift===key &&
+          ['open','steal'].includes(b.last_move.kind)) card.classList.add('gift-highlight');
       const art=node('div','gift-art',g.photo?'':g.steals>=3?'🔒':'🎁');
       giftPhotos.show(art,g,config,game,null,token);
       card.dataset.gift=g.id;
