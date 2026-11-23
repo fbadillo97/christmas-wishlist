@@ -13,13 +13,13 @@
   <script src="white-elephant-photos.js" defer></script>
   <script src="white-elephant-announcements.js?v=2" defer></script>
   <script src="white-elephant-tv.js?v=gift-meter" defer></script>
-</head>
+<link rel="stylesheet" href="./mascot.css"></head>
 <body data-view="tv" data-layout="split">
 <main class="page">
   <p role="status" id="status">Connecting to the display…</p>
   <section class="game-board" id="board" hidden>
-    <header class="board-top"><h2>White Elephant</h2><strong class="turn-pill" id="turn"></strong></header>
-    <div class="spotlight"><div class="spotlight-label" id="phase"></div>
+    <header class="board-top"><h2><img class="host-emblem" src="./assets/mascot/emblem.png" alt="" width="36" height="32">White Elephant</h2><strong class="turn-pill" id="turn"></strong></header>
+    <div class="spotlight"><img class="host-idle" src="./assets/mascot/idle.png" alt=""><div class="spotlight-label" id="phase"></div>
       <section id="announcement" role="status" aria-live="polite" hidden></section>
       <div class="player-token" aria-hidden="true" id="number"></div>
       <div class="spotlight-copy"><h3 id="player"></h3><p id="instruction"></p></div>

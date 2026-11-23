@@ -53,3 +53,18 @@ jobs:
         env:
           TEST_DATABASE_URL: postgresql://postgres@127.0.0.1:5432/postgres
           TEST_JWT_SECRET: disposable-white-elephant-browser-fixture-secret
+      - name: Capture mascot review screens with sample game data
+        if: github.head_ref == 'retro-elephant-review'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          git fetch --depth=1 origin "$BASE_SHA"
+          git worktree add --detach /tmp/wishlist-before "$BASE_SHA"
+          python -m pip install scikit-image
+          python backend/tests/white-elephant-visual-review.py /tmp/wishlist-before review/before
+          python backend/tests/white-elephant-visual-review.py . review/after
+      - uses: actions/upload-artifact@v4
+        if: github.head_ref == 'retro-elephant-review'
+        with:
+          name: mascot-screen-review
+          path: review/
