@@ -141,6 +141,8 @@ async def run():
         a,b=phones
         # Exercise the real account form and the shared sign-in landing page.
         admin_page=await a.context.new_page()
+        await admin_page.route("**/config.json",lambda route:route.fulfill(json={"supabaseUrl":"https://fixture.supabase.co","publishableKey":"fixture"}))
+        await admin_page.route("**/auth/v1/user",lambda route:route.fulfill(json={"id":str(host_a),"email":"editor@example.invalid"}))
         member={"account_id":str(host_b),"email":"viewer@example.invalid","role":"viewer","active":True,
                 "revision":1,"first_name":"Fixture","last_name":"Viewer","wishlist_access":True,"game_access":False}
         saved=[]
