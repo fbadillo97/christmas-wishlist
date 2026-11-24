@@ -77,3 +77,7 @@
 #console .gift-card{display:grid;align-content:start;gap:.5rem}
 #console .gift-card label{display:block}
 @media(max-width:760px){#console .gift-management{order:1}}
+
+#latest-tools{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;margin-top:.7rem}
+#latest-tools strong{flex-basis:100%;overflow-wrap:anywhere}
+#latest-tools button{min-height:44px;padding:.45rem .85rem;border:1px solid #afc1b6;border-radius:.65rem;background:#edf3ed;color:#143d2c;font:600 1rem system-ui}

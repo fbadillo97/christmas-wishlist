@@ -139,6 +139,30 @@ async def run():
         api = await pw.request.new_context(base_url=rest, extra_http_headers={"Authorization":"Bearer "+test_token(host_a)})
         start = {"request_id":str(uuid4()),"names":["Red","Blue","Green"],"cohosts":[str(host_b)]}
         a,b=phones
+        # Exercise the real account form and the shared sign-in landing page.
+        admin_page=await a.context.new_page()
+        member={"account_id":str(host_b),"email":"viewer@example.invalid","role":"viewer","active":True,
+                "revision":1,"first_name":"Fixture","last_name":"Viewer","wishlist_access":True,"game_access":False}
+        saved=[]
+        await admin_page.route("**/rpc/get_administration",lambda route:route.fulfill(json={"account":{"role":"editor"},"members":[member]}))
+        async def save_access(route):
+            body=route.request.post_data_json
+            saved.append(body)
+            member.update(wishlist_access=body["p_wishlist"],game_access=body["p_game"],revision=2)
+            await route.fulfill(status=200,json=None)
+        await admin_page.route("**/rpc/admin_save_account_access",save_access)
+        await admin_page.goto(origin+"/admin.html")
+        await admin_page.get_by_role("button",name="Edit account viewer@example.invalid").click()
+        await admin_page.get_by_label("Christmas Wishlist",exact=True).uncheck()
+        await admin_page.get_by_label("White Elephant",exact=True).check()
+        await admin_page.locator("#save-member").click()
+        await expect(admin_page.locator("#member-list")).to_contain_text("White Elephant")
+        assert saved and saved[0]["p_game"] and not saved[0]["p_wishlist"]
+        await admin_page.route("**/rpc/family_app_access",lambda route:route.fulfill(json={"role":"viewer","wishlist":False,"game":True}))
+        await admin_page.goto(origin+"/index.html")
+        await expect(admin_page.locator("#game-link")).to_be_visible()
+        await expect(admin_page.locator("#wishlist")).to_be_hidden()
+        await admin_page.close()
         await a.goto(origin+"/white-elephant-host.html")
         async def upload(page,label,color):
             encoded=await page.evaluate("""color=>{const c=document.createElement('canvas'); c.width=c.height=10;

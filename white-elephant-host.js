@@ -106,6 +106,8 @@
       button.onclick = () => write('propose',type,target);
       el('moves').append(button);
     };
+    const latestKey=Object.keys(gifts).at(-1);
+    el('latest-tools').hidden=!latestKey || phase==='done' || !!s.pending;
     const ownLocked = phase === 'final' && Object.values(gifts).some(g => g.owner === 1 && g.steals >= 3);
     for (const [key,g] of Object.entries(gifts)) {
       const card = document.createElement('div');
@@ -127,11 +129,21 @@
         void write('rename_gift',key,next);
       };
       card.append(rename);
+      if(key===latestKey){
+        el('latest-title').textContent='Latest gift · '+g.title;
+        el('latest-rename').onclick=()=>rename.click();
+      }
       giftPhotos.show(card,g,config,game,verifiedToken);
       for(const camera of [true,false]){
         const label=document.createElement('label'), input=document.createElement('input');
         input.type='file'; input.accept='image/*';
-        if(camera)input.setAttribute('capture','environment');
+        if(camera){
+          input.setAttribute('capture','environment');
+          if(key===latestKey){
+            el('latest-camera').textContent=g.photo?'Retake photo':'Take photo';
+            el('latest-camera').onclick=()=>input.click();
+          }
+        }
         label.textContent=camera?(g.photo?'Retake photo':'Take photo'):(g.photo?'Replace photo':'Choose photo');
         input.setAttribute('aria-label',label.textContent+' for '+g.title);
         input.onchange=()=>{if(input.files[0]) upload(g,input.files[0]);input.value='';};
