@@ -10,6 +10,7 @@
 
   function clear(message) {
     snapshot = null;
+    el('recent').hidden=true;el('recent-list').replaceChildren();el('retry-photos').replaceChildren();el('copy-tv').hidden=true;
     el('resume').hidden=true;
     el('resume-list').replaceChildren();
     el('return-setup').hidden = true;
@@ -75,7 +76,7 @@
     el('return-setup').hidden = phase !== 'done';
     const name = n => s.revealed[n - 1];
     const actor = name(state.active);
-    if (snapshot?.revision !== s.revision) el('title').value = '';
+    if (!snapshot || snapshot.state.turn !== state.turn || snapshot.state.active !== state.active || snapshot.state.phase !== phase) el('title').value = '';
     snapshot = s;
     el('console').hidden = false;
     el('turn').textContent = phase === 'regular' ? 'Turn ' + state.turn + ' of ' + s.player_count :
@@ -136,7 +137,7 @@
         input.onchange=()=>{if(input.files[0]) upload(g,input.files[0]);input.value='';};
         label.append(input);card.append(label);
       }
-      el('gifts').append(card);
+      el('gifts').prepend(card);
       if (!canPropose || phase === 'done') continue;
       if (phase === 'replacement' && g.owner === null) addMove('Take ' + g.title,'take',key);
       else if (g.owner && g.owner !== state.active && g.steals < 3 && key !== state.blocked && !ownLocked)
@@ -179,14 +180,26 @@
       await request('/rest/v1/rpc/we_attach_photo',auth,{game,gift:g.id,photo,previous:g.photo||null});
   }
   async function upload(g,file){
-    const auth=await getToken().catch(()=>null);
-    if(!auth || !snapshot)return;
-    el('photo-status').textContent='Uploading photo…';
+    const account=session()?.user?.email,version=generation;
+    const status=el('photo-status');
     try {
+      const auth=await getToken();
+      if(!snapshot || version!==generation)return;
+      status.textContent='Uploading photo for '+g.title+'…';
       await sendPhoto(game,g,file,auth);
-      if(snapshot && session()?.access_token===auth)el('photo-status').textContent='Photo saved.';
-      void read();
-    } catch(e){if(snapshot && session()?.access_token===auth)el('photo-status').textContent=e.message;}
+      if(session()?.access_token!==auth)return;
+      status.textContent='Photo saved for '+g.title+'.';void read();
+    } catch(error){
+      if(!snapshot || version!==generation || session()?.user?.email!==account)return;
+      status.textContent='Photo for '+g.title+' could not be saved. '+error.message;
+      const retry=document.createElement('button');retry.type='button';retry.textContent='Retry photo for '+g.title;
+      retry.onclick=()=>{
+        retry.remove();
+        const current=[...Object.values(snapshot?.state.gifts||{}),...(snapshot?.portraits||[])].find(item=>item.id===g.id);
+        if(current)void upload(current,file);
+      };
+      el('retry-photos').append(retry);
+    }
   }
 
   async function rpc(body, version) {
@@ -229,6 +242,7 @@
         location.replace('./white-elephant-host.html');
         return;
       }
+      if(command==='propose'&&move_type==='open')el('title').value='';
       render(latest);
       el('status').textContent = 'Connected';
     } catch (e) {
@@ -252,7 +266,7 @@
       const pairing = await request('/rest/v1/rpc/we_pair_tv', token, {game, enable});
       if (version !== generation || token !== session()?.access_token) return;
       const link = el('tv-link');
-      link.hidden = !pairing;
+      el('copy-tv').hidden=!pairing;link.hidden = !pairing;
       link.removeAttribute('href');
       if (pairing) link.href = './white-elephant-tv.html#' + new URLSearchParams({game, token:pairing});
       el('tv-message').textContent = pairing ? 'Open or copy this link for the TV.' : 'TV disconnected.';
@@ -262,6 +276,7 @@
       el('pair-tv').disabled = el('revoke-tv').disabled = false;
     }
   }
+  el('copy-tv').onclick=async()=>{try{await navigator.clipboard.writeText(el('tv-link').href);el('tv-message').textContent='TV link copied.';}catch{el('tv-message').textContent='Use Copy link on Open TV display.';}};
   el('pair-tv').onclick = () => pairTV(true);
   el('revoke-tv').onclick = () => pairTV(false);
   el('open').onclick = () => write('propose','open',el('title').value.trim() || null);
@@ -302,6 +317,10 @@
       try {
         config=await (await fetch('./config.json',{cache:'no-store'})).json();
         const token=await getToken();
+        const access=await request('/rest/v1/rpc/family_app_access',token,{});
+        if(token!==session()?.access_token)return;
+        el('wishlist-link').hidden=!access.wishlist;
+        if(!access.game){clear('White Elephant access is turned off for this account.');return;}
         const games=await request('/rest/v1/rpc/we_active_host_games',token,{});
         if(token!==session()?.access_token)return;
         for(const active of games){
@@ -337,6 +356,18 @@
           el('resume-list').append(row);
         }
         el('resume').hidden=!games.length;
+        const results=await request('/rest/v1/rpc/we_recent_results',token,{});
+        if(token!==session()?.access_token)return;
+        for(const result of results){
+          const row=document.createElement('p'),link=document.createElement('a');
+          link.href='?game='+encodeURIComponent(result.id);link.textContent='View results and replay';
+          row.append(link,' · '+result.player_count+' contestants · '+result.id.slice(0,6));el('recent-list').append(row);
+        }
+        el('recent').hidden=!results.length;
+        if(access.role==='viewer'){
+          el('status').textContent=games.length?'Choose a game to rejoin.':results.length?'Choose a completed game.':'A host can add you as a co-host when starting a game.';
+          return;
+        }
         const choices=await request('/rest/v1/rpc/we_cohost_choices',token,{});
         if(token!==session()?.access_token)return;
         const recipients=await request('/rest/v1/rpc/we_viewer_choices',token,{});
@@ -421,6 +452,9 @@
     }
     try {
       config = await (await fetch('./config.json',{cache:'no-store'})).json();
+      const token=await getToken();
+      const access=await request('/rest/v1/rpc/family_app_access',token,{});
+      if(token===session()?.access_token)el('wishlist-link').hidden=!access.wishlist;
       await read();
       setInterval(read,2000);
     } catch { clear('Could not load game settings. Refresh to reconnect.'); }
@@ -444,7 +478,11 @@
     const guests=el('guests').value.split('\n').map(name=>name.trim().replace(/\s+/g,' ')).filter(Boolean);
     const roster=[...selected,...guests];
     el('names').value=roster.join('\n');
-    el('roster-count').textContent=roster.length+' contestant'+(roster.length===1?'':'s')+' selected';
+    const unique=new Set(),duplicates=new Set();
+    for(const name of roster){const key=name.toLowerCase();if(unique.has(key))duplicates.add(name);unique.add(key);}
+    el('roster-error').textContent=duplicates.size?'Use distinct names for: '+[...duplicates].join(', '):'';
+    el('setup').querySelector('[type=submit]').disabled=!!duplicates.size;
+    el('roster-count').textContent=unique.size+' contestant'+(unique.size===1?'':'s')+' selected';
     editPortraits();
   }
   el('guests').oninput=syncRoster;
@@ -481,4 +519,3 @@
   };
   void start();
 })();
-

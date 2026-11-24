@@ -5,7 +5,8 @@
   const game = params.get('game'), token = params.get('token');
   const uuid = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
   let config, loading = false, revision = null;
-  let giftState='';
+  let giftState='', displayedPage=-1, pageStarted=0;
+  const reducedMotion=matchMedia('(prefers-reduced-motion: reduce)');
   function node(tag, cls, value) {
     const n = document.createElement(tag);
     n.className = cls;
@@ -15,12 +16,12 @@
   function reset(message) {
     victory.disconnect();
     tvAnnouncements.clear();
-    revision = null;
+    revision = null; displayedPage=-1; pageStarted=0;
     el('board').hidden = true;
     for (const id of ['turn','phase','number','player','instruction','count','gifts','wrapped']) el(id).replaceChildren();
     el('status').textContent = message;
   }
-  function render(b) {
+  function render(b,page) {
     const gifts = Object.values(b.gifts);
     el('board').hidden = false;
     el('turn').textContent = 'Turn ' + b.turn + ' of ' + b.player_count;
@@ -36,10 +37,12 @@
     el('wrapped').textContent = (b.player_count - gifts.length) + ' still wrapped';
     el('count').textContent = gifts.length;
     const grid = el('gifts');
-    const looping = gifts.length > 6;
+    const paging=page>=0;
+    const looping = gifts.length > 6 && !paging;
+    if(paging)el('count').textContent=(page*6+1)+'–'+Math.min(page*6+6,gifts.length)+' of '+gifts.length;
     grid.classList.toggle('is-scrollable',looping);
     const group = node('div','gift-grid-group');
-    for (const [key,g] of Object.entries(b.gifts)) {
+    for (const [key,g] of (paging?Object.entries(b.gifts).slice(page*6,page*6+6):Object.entries(b.gifts))) {
       const card = node('article','gift-card');
       const info = node('div','gift-info');
       info.append(node('h4','gift-name',g.title),node('p','gift-owner',b.revealed[g.owner-1] || 'Available'),
@@ -93,7 +96,13 @@
       }
       const state=JSON.stringify([b.gifts,b.portraits]);
       tvAnnouncements.update(b,revision,(parent,gift)=>giftPhotos.show(parent,gift,config,game,null,token));
-      if(revision!==b.revision || state!==giftState) render(b);
+      const total=Object.keys(b.gifts).length;
+      const paging=reducedMotion.matches && total>6;
+      if(!paging)pageStarted=0;
+      else if(!pageStarted)pageStarted=Date.now();
+      const page=paging?Math.floor((Date.now()-pageStarted)/6000)%Math.ceil(total/6):-1;
+      if(revision!==b.revision || state!==giftState || page!==displayedPage)render(b,page);
+      displayedPage=page;
       tvAnnouncements.maskOpening();
       giftState=state;
       el('status').textContent = '';
@@ -107,4 +116,3 @@
     window.addEventListener('online',refresh);
   } else reset('Open a TV link from the host console.');
 })();
-

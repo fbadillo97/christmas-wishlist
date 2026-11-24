@@ -4,6 +4,7 @@ const node = (tag, text, cls) => { const n=document.createElement(tag); if(text)
 const safeURL = value => {try{const u=new URL(value);return u.protocol==='https:'?u.href:null;}catch{return null;}};
 const adminPage=document.body.dataset.page==='administration';
 const welcomePage=document.body.dataset.page==='welcome';
+let appAccess=null;
 let suggestPasskey=false;
 let data={people:[],gifts:[]},config,person='all',busy=false,statuses=[],session=null,authorized=false,generation=0,refreshing=false,tokenRefreshPromise=null;
 let view='all',mySelections={gifts:[],units:[]};const actionMessages=new Map();
@@ -24,7 +25,7 @@ async function request(path,body,authenticated=true,method='POST'){
 }
 function notice(text){$('#connection').textContent=text;}
 function confirmAction(text,isError=false){const toast=$('#action-toast');toast.hidden=false;toast.classList.toggle('error',isError);$('#action-toast-text').textContent=text;}
-function lockWishlist(cancelPasskeys=true){clearIdea();clearFamilyPhoto();if(cancelPasskeys)window.wishlistPasskeys?.clear();window.wishlistEditor?.clear();window.wishlistAdmin?.clear();authorized=false;data={people:[],gifts:[]};statuses=[];person='all';view='all';mySelections={gifts:[],units:[]};actionMessages.clear();$('#action-toast').hidden=true;$('#action-toast-text').textContent='';}
+function lockWishlist(cancelPasskeys=true){appAccess=null;clearIdea();clearFamilyPhoto();if(cancelPasskeys)window.wishlistPasskeys?.clear();window.wishlistEditor?.clear();window.wishlistAdmin?.clear();authorized=false;data={people:[],gifts:[]};statuses=[];person='all';view='all';mySelections={gifts:[],units:[]};actionMessages.clear();$('#action-toast').hidden=true;$('#action-toast-text').textContent='';}
 
 function clearFamilyPhoto(){
  photoVersion++;photoLoading=false;photoRetryAt=0;
@@ -53,6 +54,14 @@ async function refresh(){
  try{
   if(welcomePage){const next=await request('/rest/v1/rpc/get_wishlist_account',{});if(version!==generation||!session)return;data=next;authorized=true;return;}
   if(adminPage){const next=await request('/rest/v1/rpc/get_administration',{});if(version!==generation||!session)return;data=next;authorized=true;notice('Administration · Manage family accounts and invitations.');return;}
+  const access=await request('/rest/v1/rpc/family_app_access',{});
+  if(version!==generation||!session)return;
+  if(!access.wishlist){
+    lockWishlist();appAccess=access;
+    notice(access.game?'Your account has White Elephant access. Open White Elephant above to join your game.':'Wishlist access is turned off for this account.');
+    return;
+  }
+  appAccess=access;
   const nextData=await request('/rest/v1/rpc/get_wishlist',{});
   const nextStatuses=await request('/rest/v1/rpc/list_gift_units',{});
   const nextSelections=await request('/rest/v1/rpc/get_my_selections',{});
@@ -97,14 +106,16 @@ function rankGift(gift,terms){
 }
 
 function render(){
- window.wishlistPasskeys?.sync(authorized);
+ if($('#game-link'))$('#game-link').hidden=!appAccess?.game;
+ if($('#admin-direct'))$('#admin-direct').hidden=authorized||!['owner','editor'].includes(appAccess?.role);
+ window.wishlistPasskeys?.sync(authorized||!!appAccess?.role);
  window.wishlistEditor?.sync(data,authorized);
  window.wishlistAdmin?.sync(data,authorized);
  $('#logout').hidden=!session;$('#signin').hidden=!!session;$('#account-email').hidden=!session;
  $('#account-email').textContent=session?.user?.email||(session?'Account unavailable':'');$('#login').hidden=!!session;
  if(welcomePage){window.wishlistWelcome?.sync({authorized,email:session?.user?.email||''});return;}
  if(adminPage){$('#welcome').hidden=authorized;return;}
- $('#wishlist').hidden=!authorized;$('#welcome').hidden=authorized;$('#gifts').replaceChildren();$('#people').replaceChildren();
+ $('#wishlist').hidden=!authorized;$('#welcome').hidden=authorized||!!appAccess;$('#gifts').replaceChildren();$('#people').replaceChildren();
  const recipientSelect = $('#mobile-person');
  recipientSelect.replaceChildren();
  if(!authorized){
@@ -288,7 +299,7 @@ async function acceptPasskeySession(result){
   const user=await request('/auth/v1/user',undefined,true,'GET');
   if(version!==generation||!session)return false;
   saveSession({...session,user:{email:user.email}});
-  await refresh();return authorized&&version===generation;
+  await refresh();return (authorized||!!appAccess?.role)&&version===generation;
  }catch(error){
   if(version===generation){saveSession(null);lockWishlist();render();}
   throw error;
@@ -348,4 +359,3 @@ async function start(){try{
 
  }catch(e){notice('The wishlist could not load. Please refresh in a moment.');authFeedback('Sign-in could not initialize: '+e.message);}}
 start();
-

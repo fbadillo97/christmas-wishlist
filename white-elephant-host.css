@@ -62,3 +62,9 @@
 
 #resume-list p {display:flex;flex-wrap:wrap;align-items:center;gap:.6rem;padding:.7rem 0;border-top:1px solid #d7dace;}
 #resume-list .remove-game {margin-inline-start:auto;min-height:44px;padding:.55rem .9rem;border:1px solid #dfc0b8;border-radius:.7rem;background:#fcf1ed;color:#853b32;font-weight:600;cursor:pointer;}
+
+#roster-error:not(:empty){color:#852438;font-weight:650}
+#recent-list a,#copy-tv{min-height:44px;display:inline-flex;align-items:center}
+#copy-tv[hidden]{display:none}
+#console .game-board{align-self:start}
+@media(max-width:760px){#console .game-layout{display:flex;flex-direction:column}#console .game-board{order:-1;min-height:0}#console .host-panel{width:100%}}
