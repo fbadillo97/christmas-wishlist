@@ -62,3 +62,22 @@
 
 #resume-list p {display:flex;flex-wrap:wrap;align-items:center;gap:.6rem;padding:.7rem 0;border-top:1px solid #d7dace;}
 #resume-list .remove-game {margin-inline-start:auto;min-height:44px;padding:.55rem .9rem;border:1px solid #dfc0b8;border-radius:.7rem;background:#fcf1ed;color:#853b32;font-weight:600;cursor:pointer;}
+
+#roster-error:not(:empty){color:#852438;font-weight:650}
+#recent-list a,#copy-tv{min-height:44px;display:inline-flex;align-items:center}
+#copy-tv[hidden]{display:none}
+#console .game-board{align-self:start}
+@media(max-width:760px){#console .game-layout{display:flex;flex-direction:column}#console .game-board{order:-1;min-height:0}#console .host-panel{width:100%}}
+
+#console .game-layout{grid-template-areas:"player controls" "gifts controls";grid-template-rows:auto 1fr}
+#console .game-board{grid-area:player}
+#console .host-panel{grid-area:controls}
+#console .gift-management{grid-area:gifts}
+#console .gift-grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,15rem),1fr))}
+#console .gift-card{display:grid;align-content:start;gap:.5rem}
+#console .gift-card label{display:block}
+@media(max-width:760px){#console .gift-management{order:1}}
+
+#latest-tools{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;margin-top:.7rem}
+#latest-tools strong{flex-basis:100%;overflow-wrap:anywhere}
+#latest-tools button{min-height:44px;padding:.45rem .85rem;border:1px solid #afc1b6;border-radius:.65rem;background:#edf3ed;color:#143d2c;font:600 1rem system-ui}

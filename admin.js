@@ -4,7 +4,7 @@
  let sortKey='first_name',sortDirection=1;const tableFilterKeys=['role','access','signed','passkey','welcome'];const collator=new Intl.Collator(undefined,{sensitivity:'base',numeric:true});
  const allowed=()=>['owner','editor'].includes(role);
  const message=(text,error=false)=>{const el=$('#admin-message');el.textContent=text;el.classList.toggle('error',error);};
- function reset(){$('#account-editor').open=false;editing=null;dirty=false;$('#member-form').reset();$('#member-id').textContent='Assigned when saved';$('#member-email').readOnly=false;$('#member-form-title').textContent='Add account';$('#cancel-member').hidden=true;$('#member-active').checked=true;$('#member-role').value='viewer';$('#member-role').disabled=role!=='owner';$('#member-active').disabled=false;$('#owner-option').hidden=true;}
+ function reset(){$('#account-editor').open=false;editing=null;dirty=false;$('#member-form').reset();$('#member-id').textContent='Assigned when saved';$('#member-email').readOnly=false;$('#member-form-title').textContent='Add account';$('#cancel-member').hidden=true;$('#member-active').checked=true;$('#member-wishlist').checked=true;$('#member-game').checked=true;$('#member-role').value='viewer';$('#member-role').disabled=role!=='owner';$('#member-active').disabled=false;$('#owner-option').hidden=true;}
  function clear(){resetTableFilters();sortKey='first_name';sortDirection=1;updateSortHeaders();clearTracking();window.wishlistRoadmap?.clear();$('#roadmap-link').hidden=true;role=null;members=[];signature='';busy=false;reset();for(const id of ['member-name','member-last-name','member-email','save-member','cancel-member','refresh-members'])$('#'+id).disabled=false;$('#member-list').replaceChildren();$('#member-count').textContent='';$('#member-search').value='';$('#administration').hidden=true;message('');}
  function sync(data,authorized){
   const nextRole=authorized?data.account?.role:null;
@@ -66,7 +66,7 @@
  function edit(member){
   if(busy)return;if(dirty&&!window.confirm('Discard your unsaved account changes?'))return;
   $('#account-editor').open=true;editing={...member};dirty=false;$('#member-form-title').textContent='Edit account';$('#member-name').value=member.first_name||'';$('#member-last-name').value=member.last_name||'';$('#member-id').textContent=member.account_id||'Assigned when saved';$('#member-email').value=member.email;$('#member-email').readOnly=false;
-  $('#owner-option').hidden=member.role!=='owner';$('#member-role').value=member.role;$('#member-role').disabled=role!=='owner'||member.role==='owner';$('#member-active').checked=member.active;$('#member-active').disabled=member.role==='owner';$('#cancel-member').hidden=false;message('');$('#member-name').focus();
+  $('#owner-option').hidden=member.role!=='owner';$('#member-role').value=member.role;$('#member-role').disabled=role!=='owner'||member.role==='owner';$('#member-active').checked=member.active;$('#member-wishlist').checked=member.wishlist_access;$('#member-game').checked=member.game_access;$('#member-active').disabled=member.role==='owner';$('#cancel-member').hidden=false;message('');$('#member-name').focus();
  }
  function resetTableFilters(){for(const key of tableFilterKeys)$('#member-filter-'+key).value='all';$('#member-search').value='';}
  function updateSortHeaders(){
@@ -102,7 +102,7 @@
   for(const member of filtered){
    const row=make('tr'),name=make('td',member.first_name||'—'),lastName=make('td',member.last_name||'—'),email=make('td',member.email,'account-email-cell');
    const status=states[member.invitation_status]||states.not_sent,invitation=make('td'),badge=make('span',status[0],'admin-status status-'+(member.invitation_status||'not_sent'));badge.title=status[1];invitation.append(badge);
-   const access=make('td'),accessBadge=make('span',member.active?'Active':'Removed','admin-status '+(member.active?'access-active':'access-removed'));access.append(accessBadge);
+   const access=make('td'),accessBadge=make('span',member.active?'Active':'Removed','admin-status '+(member.active?'access-active':'access-removed'));access.append(accessBadge,make('small',[member.wishlist_access?'Wishlist':'',member.game_access?'White Elephant':''].filter(Boolean).join(' · ')||'Neither app'));
    const when=make('td','—','account-date-cell');if(member.invitation_sent_at){const date=new Date(member.invitation_sent_at);when.textContent=date.toLocaleDateString(undefined,{month:'short',day:'numeric'})+' '+date.toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'});when.title=date.toLocaleString();}
    const actions=make('td'),controls=make('div',null,'account-row-actions'),editable=role==='owner'||member.role==='viewer';
    if(editable){const button=make('button','Edit');button.type='button';button.disabled=busy;button.setAttribute('aria-label','Edit account '+member.email);button.onclick=()=>edit(member);controls.append(button);}
@@ -118,8 +118,8 @@
  async function reload(){await api.refresh();}
  async function save(event){
   event.preventDefault();if(!allowed()||busy)return;const version=api.getGeneration();
-  const payload={p_email:$('#member-email').value.trim(),p_first_name:$('#member-name').value.trim(),p_last_name:$('#member-last-name').value.trim(),p_role:$('#member-role').value,p_active:$('#member-active').checked,p_revision:editing?.revision??null};
-  if(editing?.active&&!payload.p_active&&!window.confirm('Remove wishlist access for '+editing.email+'? Existing selections will be preserved.'))return;
+  const payload={p_email:$('#member-email').value.trim(),p_first_name:$('#member-name').value.trim(),p_last_name:$('#member-last-name').value.trim(),p_role:$('#member-role').value,p_active:$('#member-active').checked,p_wishlist:$('#member-wishlist').checked,p_game:$('#member-game').checked,p_revision:editing?.revision??null};
+  if(editing?.active&&!payload.p_active&&!window.confirm('Deactivate the family account for '+editing.email+'? Existing selections will be preserved.'))return;
   const emailChanged=Boolean(editing&&payload.p_email.toLowerCase()!==editing.email.toLowerCase());
   if(emailChanged&&!window.confirm('Change the sign-in email from '+editing.email+' to '+payload.p_email+'? The old email will lose access. Existing selections will be preserved, passkeys may be removed, and the account holder will need to sign in again. No email will be sent automatically.'))return;
   pending(true);message('Saving account…');
@@ -131,7 +131,7 @@
     payload.p_revision=editing.revision+1;
     if(changed.passkey_warning)message(changed.message,true);
    }
-   await api.request('/rest/v1/rpc/admin_save_account',payload);
+   await api.request('/rest/v1/rpc/admin_save_account_access',payload);
    if(version!==api.getGeneration()||!allowed())return;
    reset();await reload();
    if(version===api.getGeneration()&&allowed())message(emailChanged?'Account and email saved. No email was sent.':'Account saved. No email was sent.');
@@ -159,4 +159,3 @@
 $('#accounts-link').onclick=()=>showSection('accounts');$('#tracking-link').onclick=()=>showSection('tracking');$('#roadmap-link').onclick=()=>showSection('roadmap');window.wishlistRoadmap?.init({request:api.request,refresh:api.refresh,getGeneration:api.getGeneration,getRole:()=>role});for(const id of ['tracking-status','tracking-recipient','tracking-person'])$('#'+id).onchange=renderTracking;$('#refresh-tracking').onclick=reload;$('#member-form').onsubmit=save;$('#member-form').oninput=()=>{dirty=true;};$('#member-form').onchange=()=>{dirty=true;};$('#cancel-member').onclick=()=>{if(!busy){reset();message('');}};$('#member-search').oninput=render;$('#refresh-members').onclick=reload;window.addEventListener('beforeunload',event=>{if(dirty){event.preventDefault();event.returnValue='';}});}
  window.wishlistAdmin={init,sync,clear};
 })();
-

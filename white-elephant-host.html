@@ -8,12 +8,12 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' blob:; connect-src 'self' https://*.supabase.co; base-uri 'none'; object-src 'none'; form-action 'none'">
   <title>White Elephant · Host console</title>
   <link rel="stylesheet" href="white-elephant.css">
-  <link rel="stylesheet" href="white-elephant-host.css?v=host-actions-2">
+  <link rel="stylesheet" href="white-elephant-host.css?v=app-access-1">
   <script src="white-elephant-photos.js" defer></script>
-  <script src="white-elephant-host.js" defer></script>
+  <script src="white-elephant-host.js?v=app-access-1" defer></script>
 <link rel="stylesheet" href="./mascot.css"></head>
 <body>
-  <header class="site-header"><a class="brand" href="./"><img class="host-emblem" src="./assets/mascot/emblem.png" alt="" width="36" height="32"> BADILLO FAMILY</a><a class="back-link" href="./">Family sign-in</a></header>
+  <header class="site-header"><a class="brand" href="./"><img class="host-emblem" src="./assets/mascot/emblem.png" alt="" width="36" height="32"> BADILLO FAMILY</a><a class="back-link" id="wishlist-link" href="./">Christmas Wishlist</a></header>
   <main class="page">
     <h1>White Elephant</h1>
     <p id="status" role="status">Connecting to the game…</p>
@@ -21,6 +21,7 @@
       <h2 id="resume-title">Your active games</h2>
       <div id="resume-list"></div>
     </section>
+    <section id="recent" class="host-panel" hidden><h2>Completed games</h2><div id="recent-list"></div></section>
     <form id="setup" class="host-panel" hidden>
       <h2>Game contestants</h2>
       <p>Select the family members playing in this exchange.</p>
@@ -28,7 +29,7 @@
       <label for="guests"><strong>Guests</strong></label>
       <textarea id="guests" rows="2" placeholder="Enter one guest name per line"></textarea>
       <textarea id="names" hidden></textarea>
-      <p id="roster-count" role="status">0 contestants selected</p>
+      <p id="roster-error" role="status"></p><p id="roster-count" role="status">0 contestants selected</p>
       <details id="setup-portraits"><summary>Photos for this game</summary><div id="setup-photos"></div></details>
       <details><summary>Co-host access</summary><div id="choices"></div></details>
       <p>Players draw a random order. A gift locks on its third steal. No immediate steal-back. After the last opening, the first player gets a final opportunity.</p>
@@ -40,10 +41,11 @@
         <section class="game-board" aria-labelledby="player">
           <header class="board-top"><div><p class="board-kicker" id="turn"></p><h2 id="player"></h2></div></header>
           <p class="board-section-heading" id="instruction"></p>
-          <p role="status" id="photo-status"></p><div class="gift-grid" id="gifts"></div>
+          <div id="latest-tools" hidden><strong id="latest-title"></strong><button type="button" id="latest-camera">Take photo</button><button type="button" id="latest-rename">Rename gift</button></div>
+
         </section>
         <section class="host-panel" aria-label="Host controls">
-          <details><summary>Player portraits</summary><div id="portraits"></div></details><h2>Game controls</h2><button type="button" id="share-host" class="text-button">Copy host link</button>
+          <h2>Game controls</h2><button type="button" id="share-host" class="text-button">Copy host link</button>
           <fieldset id="controls" aria-label="Available game actions">
             <div id="open-group" class="control-group">
               <label for="title">Gift name (optional)</label>
@@ -65,13 +67,15 @@
             <p>Creating a new link disconnects the previous display.</p>
             <button id="pair-tv" type="button" class="control-button">Create TV link</button>
             <a id="tv-link" hidden target="_blank" rel="noopener noreferrer">Open TV display</a>
-            <button id="revoke-tv" type="button" class="text-button">Disconnect TV</button>
+            <button type="button" id="copy-tv" hidden>Copy TV link</button><button id="revoke-tv" type="button" class="text-button">Disconnect TV</button>
             <p id="tv-message" role="status"></p>
           </details>
+        </section>
+        <section class="host-panel gift-management" aria-label="Gift and portrait management">
+          <p role="status" id="photo-status"></p><div id="retry-photos"></div><h2>Opened gifts</h2><div class="gift-grid" id="gifts"></div><details><summary>Player portraits</summary><div id="portraits"></div></details>
         </section>
       </div>
     </section>
   </main>
 </body>
 </html>
-

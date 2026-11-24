@@ -66,6 +66,8 @@ def run():
         admin.execute((BACKEND / "white-elephant-tv-announcements.sql").read_text())
         admin.execute((BACKEND / "white-elephant-rename-gift.sql").read_text())
         admin.execute((BACKEND / "white-elephant-awards.sql").read_text())
+        admin.execute((BACKEND / "application-access.sql").read_text())
+        admin.execute((BACKEND / "game-application-access.sql").read_text())
         host_a, host_b = uuid4(), uuid4()
         for host, role in [(host_a, "editor"), (host_b, "viewer")]:
             email = f"{host}@example.invalid"
@@ -108,6 +110,16 @@ def run():
         assert len(gifts) == 1 and gifts["1"]["title"] == "Parcel" and gifts["1"]["owner"] == 1
         assert admin.execute("SELECT actor, revision FROM white_elephant.history WHERE game_id=%s",
                              (game,)).fetchall() == [(host_a, revision + 1)]
+        admin.execute("update wishlist_private.family_members set game_access=false where email=%s",(email,))
+        assert second.execute("select public.family_app_access()->>'game'").fetchone()[0]=='false'
+        try:
+            action(second,game,None,'read')
+        except psycopg.DatabaseError as exc:
+            assert exc.sqlstate=='42501'
+        else:
+            raise AssertionError("Revoked co-host could still read the game")
+        admin.execute("update wishlist_private.family_members set game_access=true, wishlist_access=false where email=%s",(email,))
+        assert action(second,game,None,'read')==winner
         print(f"B received PT409; revision {revision} -> {final['revision']}; one gift, one history entry")
 
 

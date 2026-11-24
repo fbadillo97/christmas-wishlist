@@ -94,7 +94,7 @@ async def run():
                 objects[path]=raw
                 self.reply(200,b'{}')
                 return
-            if self.path not in ("/rest/v1/rpc/we_active_host_games","/rest/v1/rpc/we_host_action","/rest/v1/rpc/we_pair_tv","/rest/v1/rpc/we_tv_board","/rest/v1/rpc/we_attach_photo","/rest/v1/rpc/we_start_game","/rest/v1/rpc/we_cohost_choices","/rest/v1/rpc/we_viewer_player_names","/rest/v1/rpc/we_viewer_choices","/rest/v1/rpc/we_account_portrait"):
+            if self.path not in ("/rest/v1/rpc/family_app_access","/rest/v1/rpc/we_recent_results","/rest/v1/rpc/we_active_host_games","/rest/v1/rpc/we_host_action","/rest/v1/rpc/we_pair_tv","/rest/v1/rpc/we_tv_board","/rest/v1/rpc/we_attach_photo","/rest/v1/rpc/we_start_game","/rest/v1/rpc/we_cohost_choices","/rest/v1/rpc/we_viewer_player_names","/rest/v1/rpc/we_viewer_choices","/rest/v1/rpc/we_account_portrait"):
                 self.send_error(404)
                 return
             body = self.rfile.read(int(self.headers["Content-Length"]))
@@ -139,6 +139,32 @@ async def run():
         api = await pw.request.new_context(base_url=rest, extra_http_headers={"Authorization":"Bearer "+test_token(host_a)})
         start = {"request_id":str(uuid4()),"names":["Red","Blue","Green"],"cohosts":[str(host_b)]}
         a,b=phones
+        # Exercise the real account form and the shared sign-in landing page.
+        admin_page=await a.context.new_page()
+        await admin_page.route("**/config.json",lambda route:route.fulfill(json={"supabaseUrl":"https://fixture.supabase.co","publishableKey":"fixture"}))
+        await admin_page.route("**/auth/v1/user",lambda route:route.fulfill(json={"id":str(host_a),"email":"editor@example.invalid"}))
+        member={"account_id":str(host_b),"email":"viewer@example.invalid","role":"viewer","active":True,
+                "revision":1,"first_name":"Fixture","last_name":"Viewer","wishlist_access":True,"game_access":False}
+        saved=[]
+        await admin_page.route("**/rpc/get_administration",lambda route:route.fulfill(json={"account":{"role":"editor"},"members":[member]}))
+        async def save_access(route):
+            body=route.request.post_data_json
+            saved.append(body)
+            member.update(wishlist_access=body["p_wishlist"],game_access=body["p_game"],revision=2)
+            await route.fulfill(status=200,json=None)
+        await admin_page.route("**/rpc/admin_save_account_access",save_access)
+        await admin_page.goto(origin+"/admin.html")
+        await admin_page.get_by_role("button",name="Edit account viewer@example.invalid").click()
+        await admin_page.get_by_label("Christmas Wishlist",exact=True).uncheck()
+        await admin_page.get_by_label("White Elephant",exact=True).check()
+        await admin_page.locator("#save-member").click()
+        await expect(admin_page.locator("#member-list")).to_contain_text("White Elephant")
+        assert saved and saved[0]["p_game"] and not saved[0]["p_wishlist"]
+        await admin_page.route("**/rpc/family_app_access",lambda route:route.fulfill(json={"role":"viewer","wishlist":False,"game":True}))
+        await admin_page.goto(origin+"/index.html")
+        await expect(admin_page.locator("#game-link")).to_be_visible()
+        await expect(admin_page.locator("#wishlist")).to_be_hidden()
+        await admin_page.close()
         await a.goto(origin+"/white-elephant-host.html")
         async def upload(page,label,color):
             encoded=await page.evaluate("""color=>{const c=document.createElement('canvas'); c.width=c.height=10;
@@ -164,6 +190,9 @@ async def run():
         await upload(a,"Save account photo for Robin Winter","yellow")
         await a.get_by_role("button",name="Use saved photo for this game").click()
         await expect(a.locator("#names")).to_have_value("Robin Winter")
+        await a.locator("#guests").fill("robin winter")
+        await expect(a.locator("#roster-error")).to_contain_text("distinct names")
+        await expect(a.get_by_role("button",name="Start game")).to_be_disabled()
         await a.locator("#guests").fill("Blue\nGreen")
         await expect(a.locator("#roster-count")).to_have_text("3 contestants selected")
         await a.get_by_text("Co-host access").click()
@@ -216,6 +245,11 @@ async def run():
         assert (await cancelled_board.json())["last_move"] is None
         await expect(a.locator("#open")).to_be_visible()
         await a.locator("#title").fill("Parcel")
+        await b.locator("#pause").click()
+        await expect(a.locator("#pause")).to_have_text("Resume game")
+        await b.locator("#pause").click()
+        await expect(a.locator("#open")).to_be_visible()
+        await expect(a.locator("#title")).to_have_value("Parcel")
         await a.locator("#open").click()
         for page in phones:
             await expect(page.locator("#pending")).to_have_text("Waiting to confirm new gift selection.")
@@ -313,6 +347,11 @@ async def run():
                         Math.abs(bounds.height-(3*card.height+2*gap))<3 &&
                         Math.abs(document.querySelector('.board-section-heading').getBoundingClientRect().top-panel.top)<2;
                 }""")
+            if count==8:
+                await layout.emulate_media(reduced_motion="reduce")
+                await expect(layout.locator("#count")).to_have_text("1–6 of 8")
+                await expect(layout.locator("#count")).to_have_text("7–8 of 8",timeout=12000)
+                await expect(layout.locator("#gifts .gift-card")).to_have_count(2)
             await layout.unroute("**/rpc/we_tv_board")
         await layout.close()
         await tv.reload()
