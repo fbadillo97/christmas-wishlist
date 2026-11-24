@@ -293,7 +293,7 @@ async def run():
         board=await sample.json()
         gift=next(iter(board["gifts"].values()))
         for count in [6,8]:
-            board["gifts"]={str(i):{**gift,"title":"Gift "+str(i),"photo":None} for i in range(count)}
+            board["gifts"]={str(i):{**gift,"title":"Long wrapped holiday gift name "*4+str(i),"photo":None} for i in range(count)}
             await layout.route("**/rpc/we_tv_board",lambda route: route.fulfill(json=board))
             await layout.goto(tv.url)
             await layout.reload()
@@ -304,7 +304,12 @@ async def run():
                     const bounds=grid.getBoundingClientRect(),panel=document.querySelector('.spotlight').getBoundingClientRect();
                     const card=grid.querySelector('.gift-card').getBoundingClientRect();
                     const gap=parseFloat(getComputedStyle(grid).rowGap);
-                    return Math.abs(bounds.bottom-panel.bottom)<2 &&
+                    const metersFit=[...grid.querySelectorAll('.gift-card')].every(item=>{
+                        const rect=item.getBoundingClientRect(), meter=item.querySelector('.steal-meter').getBoundingClientRect();
+                        return meter.height>=12 && meter.width>rect.width*0.85 &&
+                            meter.top>=rect.top && meter.bottom<=rect.bottom+1;
+                    });
+                    return metersFit && Math.abs(bounds.bottom-panel.bottom)<2 &&
                         Math.abs(bounds.height-(3*card.height+2*gap))<3 &&
                         Math.abs(document.querySelector('.board-section-heading').getBoundingClientRect().top-panel.top)<2;
                 }""")

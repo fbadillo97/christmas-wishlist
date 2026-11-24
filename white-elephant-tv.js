@@ -48,14 +48,13 @@
       meter.setAttribute('aria-hidden','true');
       meter.dataset.count=String(g.steals);
       meter.append(node('span','steal-fill'));
-      info.append(meter);
       card.classList.toggle('gift-locked',g.steals>=3);
       if(revision!==null && b.last_move?.revision>revision && b.last_move.gift===key &&
           ['open','steal'].includes(b.last_move.kind)) card.classList.add('gift-highlight');
       const art=node('div','gift-art',g.photo?'':g.steals>=3?'🔒':'🎁');
       giftPhotos.show(art,g,config,game,null,token);
       card.dataset.gift=g.id;
-      card.append(art,info);
+      card.append(art,info,meter);
       group.append(card);
     }
     if (looping) {
