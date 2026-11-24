@@ -62,7 +62,6 @@
             <button id="undo" class="text-button" type="button">Undo last move</button>
             <button id="cancel-game" type="button" class="text-button">Cancel game</button>
           </fieldset>
-          <p role="status" id="photo-status"></p><div id="retry-photos"></div><h2>Opened gifts</h2><div class="gift-grid" id="gifts"></div><details><summary>Player portraits</summary><div id="portraits"></div></details>
           <details><summary>TV display</summary>
             <p>Creating a new link disconnects the previous display.</p>
             <button id="pair-tv" type="button" class="control-button">Create TV link</button>
@@ -70,6 +69,9 @@
             <button type="button" id="copy-tv" hidden>Copy TV link</button><button id="revoke-tv" type="button" class="text-button">Disconnect TV</button>
             <p id="tv-message" role="status"></p>
           </details>
+        </section>
+        <section class="host-panel gift-management" aria-label="Gift and portrait management">
+          <p role="status" id="photo-status"></p><div id="retry-photos"></div><h2>Opened gifts</h2><div class="gift-grid" id="gifts"></div><details><summary>Player portraits</summary><div id="portraits"></div></details>
         </section>
       </div>
     </section>

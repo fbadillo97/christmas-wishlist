@@ -164,6 +164,9 @@ async def run():
         await upload(a,"Save account photo for Robin Winter","yellow")
         await a.get_by_role("button",name="Use saved photo for this game").click()
         await expect(a.locator("#names")).to_have_value("Robin Winter")
+        await a.locator("#guests").fill("robin winter")
+        await expect(a.locator("#roster-error")).to_contain_text("distinct names")
+        await expect(a.get_by_role("button",name="Start game")).to_be_disabled()
         await a.locator("#guests").fill("Blue\nGreen")
         await expect(a.locator("#roster-count")).to_have_text("3 contestants selected")
         await a.get_by_text("Co-host access").click()
@@ -216,6 +219,11 @@ async def run():
         assert (await cancelled_board.json())["last_move"] is None
         await expect(a.locator("#open")).to_be_visible()
         await a.locator("#title").fill("Parcel")
+        await b.locator("#pause").click()
+        await expect(a.locator("#pause")).to_have_text("Resume game")
+        await b.locator("#pause").click()
+        await expect(a.locator("#open")).to_be_visible()
+        await expect(a.locator("#title")).to_have_value("Parcel")
         await a.locator("#open").click()
         for page in phones:
             await expect(page.locator("#pending")).to_have_text("Waiting to confirm new gift selection.")
@@ -313,6 +321,11 @@ async def run():
                         Math.abs(bounds.height-(3*card.height+2*gap))<3 &&
                         Math.abs(document.querySelector('.board-section-heading').getBoundingClientRect().top-panel.top)<2;
                 }""")
+            if count==8:
+                await layout.emulate_media(reduced_motion="reduce")
+                await expect(layout.locator("#count")).to_have_text("1–6 of 8")
+                await expect(layout.locator("#count")).to_have_text("7–8 of 8",timeout=12000)
+                await expect(layout.locator("#gifts .gift-card")).to_have_count(2)
             await layout.unroute("**/rpc/we_tv_board")
         await layout.close()
         await tv.reload()

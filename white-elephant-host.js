@@ -361,7 +361,7 @@
         for(const result of results){
           const row=document.createElement('p'),link=document.createElement('a');
           link.href='?game='+encodeURIComponent(result.id);link.textContent='View results and replay';
-          row.append(link,' · '+result.player_count+' contestants · '+result.id.slice(0,6));el('recent-list').append(row);
+          row.append(link,(result.completed_at?' · '+new Date(result.completed_at).toLocaleDateString():''),' · '+result.player_count+' contestants · '+result.id.slice(0,6));el('recent-list').append(row);
         }
         el('recent').hidden=!results.length;
         if(access.role==='viewer'){
@@ -452,9 +452,6 @@
     }
     try {
       config = await (await fetch('./config.json',{cache:'no-store'})).json();
-      const token=await getToken();
-      const access=await request('/rest/v1/rpc/family_app_access',token,{});
-      if(token===session()?.access_token)el('wishlist-link').hidden=!access.wishlist;
       await read();
       setInterval(read,2000);
     } catch { clear('Could not load game settings. Refresh to reconnect.'); }

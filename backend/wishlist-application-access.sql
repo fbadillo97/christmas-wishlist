@@ -144,7 +144,7 @@ CREATE OR REPLACE FUNCTION wishlist_private.list_gift_units()
  SET search_path TO ''
 AS $function$
 begin
-if not (wishlist_private.app_role('wishlist') is not null) then raise exception 'This email is not on the family invitation list.' using errcode='42501';end if;
+if wishlist_private.app_role('wishlist') is null then raise exception 'This email is not on the family invitation list.' using errcode='42501';end if;
 return query select g.id,u.n,coalesce(c.status,'available'),coalesce(c.owner_id=auth.uid(),false) from wishlist_private.gift_catalog g cross join lateral generate_series(1,g.quantity) as u(n) left join wishlist_private.gift_claims c on c.gift_id=g.id and c.unit_no=u.n where not g.archived and g.reservation_mode='limited';
 end;$function$;
 
@@ -209,7 +209,7 @@ CREATE OR REPLACE FUNCTION wishlist_private.set_gift_unit_status(p_gift_id text,
 AS $function$
 declare capacity integer;affected integer;is_archived boolean;v_mode text;
 begin
-if not (wishlist_private.app_role('wishlist') is not null) then raise exception 'This email is not on the family invitation list.' using errcode='42501';end if;
+if wishlist_private.app_role('wishlist') is null then raise exception 'This email is not on the family invitation list.' using errcode='42501';end if;
 if p_status is null or p_status not in ('available','reserved','purchased') then raise exception 'Invalid status';end if;
 select quantity,archived,reservation_mode into capacity,is_archived,v_mode from wishlist_private.gift_catalog where id=p_gift_id for update;
 if not found or p_unit_no is null or p_unit_no<1 or p_unit_no>capacity then raise exception 'This requested item does not exist';end if;
@@ -237,7 +237,7 @@ CREATE OR REPLACE FUNCTION wishlist_private.set_idea_selection(p_gift_id text, p
 AS $function$
 declare g wishlist_private.gift_catalog%rowtype;
 begin
- if not (wishlist_private.app_role('wishlist') is not null) then raise exception 'Family access required' using errcode='42501';end if;
+ if wishlist_private.app_role('wishlist') is null then raise exception 'Family access required' using errcode='42501';end if;
  if p_status is null or p_status not in ('available','reserved','purchased') then raise exception 'Invalid status';end if;
  if length(coalesce(p_private_note,''))>2000 then raise exception 'Keep your private note to 2000 characters.';end if;
  select * into g from wishlist_private.gift_catalog where id=p_gift_id for update;

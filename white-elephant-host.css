@@ -68,3 +68,12 @@
 #copy-tv[hidden]{display:none}
 #console .game-board{align-self:start}
 @media(max-width:760px){#console .game-layout{display:flex;flex-direction:column}#console .game-board{order:-1;min-height:0}#console .host-panel{width:100%}}
+
+#console .game-layout{grid-template-areas:"player controls" "gifts controls";grid-template-rows:auto 1fr}
+#console .game-board{grid-area:player}
+#console .host-panel{grid-area:controls}
+#console .gift-management{grid-area:gifts}
+#console .gift-grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,15rem),1fr))}
+#console .gift-card{display:grid;align-content:start;gap:.5rem}
+#console .gift-card label{display:block}
+@media(max-width:760px){#console .gift-management{order:1}}

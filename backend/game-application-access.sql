@@ -1,3 +1,5 @@
+alter table white_elephant.games add column completed_at timestamptz;
+update white_elephant.games set completed_at=(ceremony->>'start')::timestamptz where state->>'phase'='done' and ceremony ? 'start';
 CREATE OR REPLACE FUNCTION white_elephant.can_upload(path text)
  RETURNS boolean
  LANGUAGE sql
@@ -58,11 +60,11 @@ begin
    if image is null or length(image)>699052 then raise exception 'Invalid photo size'; end if;
    bytes:=decode(image,'base64');
    if substring(bytes from 1 for 3)<>decode('ffd8ff','hex') or octet_length(bytes)>524288 then raise exception 'JPEG required'; end if;
-   update wishlist_private.family_members set game_portrait=bytes where account_id=id and game_access and active;
+   update wishlist_private.family_members set game_portrait=bytes where account_id=id and active;
    if not found then raise exception 'Account unavailable'; end if;
    return null;
  end if;
- select game_portrait into bytes from wishlist_private.family_members where account_id=id and game_access and active;
+ select game_portrait into bytes from wishlist_private.family_members where account_id=id and active;
  return replace(encode(bytes,'base64'),chr(10),'');
 end;$function$;
 
@@ -90,7 +92,7 @@ CREATE OR REPLACE FUNCTION white_elephant.host_action(game uuid, expected bigint
 AS $function$
 declare g white_elephant.games; next_state jsonb; last_move white_elephant.history;
 begin
-  if not (wishlist_private.app_role('game') is not null) then raise exception 'Host access required' using errcode='42501'; end if;
+  if wishlist_private.app_role('game') is null then raise exception 'Host access required' using errcode='42501'; end if;
   if command = 'read' then
     select * into g from white_elephant.games where id=game and auth.uid()=any(hosts);
   else
@@ -154,7 +156,7 @@ begin
       update white_elephant.history set undone_at=g.revision+1 where game_id=game and revision=last_move.revision;
     else raise exception 'Unknown host command';
   end case;
-  update white_elephant.games set revision=g.revision+1, ceremony=case when command='confirm' and g.state->>'phase'='done'
+  update white_elephant.games set revision=g.revision+1, completed_at=case when g.state->>'phase'<>'done' then null when command='confirm' then statement_timestamp() else g.completed_at end, ceremony=case when command='confirm' and g.state->>'phase'='done'
       then jsonb_build_object('start',statement_timestamp(),'next','[]'::jsonb) else g.ceremony end,
     state=g.state, pending=g.pending, paused=g.paused
     where id=game returning * into g;
@@ -174,7 +176,7 @@ begin
    raise exception 'Organizer access required' using errcode='42501';
  end if;
  return query select coalesce(nullif(btrim(concat_ws(' ',f.first_name,f.last_name)),''),'Family member ' || left(f.account_id::text,6))
- from wishlist_private.family_members f where f.game_access and f.active
+ from wishlist_private.family_members f where f.active
 
  order by 1;
 end;$function$;
@@ -243,7 +245,7 @@ CREATE OR REPLACE FUNCTION white_elephant.pair_tv(game uuid, enable boolean)
 AS $function$
 declare token uuid;
 begin
-  if not (wishlist_private.app_role('game') is not null) then
+  if wishlist_private.app_role('game') is null then
     raise exception 'Host access required' using errcode='42501';
   end if;
   if enable then token := gen_random_uuid(); end if;
@@ -264,13 +266,13 @@ AS $function$
 begin
  if coalesce(wishlist_private.app_role('game'),'') not in ('owner','editor') then raise exception 'Organizer required' using errcode='42501'; end if;
  return query select f.account_id,coalesce(nullif(btrim(concat_ws(' ',f.first_name,f.last_name)),''),'Family member ' || left(f.account_id::text,6)),f.game_portrait is not null
- from wishlist_private.family_members f where f.game_access and f.active order by 2;
+ from wishlist_private.family_members f where f.active order by 2;
 end;$function$;
 
 
-create function public.we_recent_results() returns table(id uuid,player_count integer,ceremony_at timestamptz)
+create function public.we_recent_results() returns table(id uuid,player_count integer,completed_at timestamptz)
 language sql stable security definer set search_path='' as $$
- select g.id,cardinality(g.lineup),(g.ceremony->>'start')::timestamptz from white_elephant.games g
+ select g.id,cardinality(g.lineup),g.completed_at from white_elephant.games g
  where wishlist_private.app_role('game') is not null and auth.uid()=any(g.hosts) and g.state->>'phase'='done'
  order by 3 desc nulls last,g.id limit 10
 $$;
